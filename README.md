@@ -21,27 +21,61 @@ Binary: `wntrmte` | Data folder: `.wntrmte`
 Wintermute never forks VS Code directly. Instead, it clones a pinned upstream commit at build time and applies a curated set of patches. This keeps upstream updates cheap — bump a version tag, check patches, rebuild.
 
 ```
-wintermute/
-├── upstream/stable.json       # Pinned VS Code commit + tag
-├── patches/                   # Curated diffs applied at build time
-├── extensions/wntrmte-workflow/  # Agent workflow extension
-├── product.json               # Branding + Open VSX marketplace
-├── build.sh                   # Full build orchestration
-└── .github/workflows/         # CI: Linux + Windows + macOS
+wntrmte/
+├── upstream/stable.json          # Pinned VS Code commit + tag
+├── patches/                      # Curated diffs applied at build time
+├── extensions/wntrmte-workflow/  # Agent workflow extension (Phase 3)
+├── product.json                  # Branding + Open VSX marketplace
+├── utils.sh                      # Shared functions (apply_patch, replace)
+├── get_repo.sh                   # Shallow clone by pinned commit
+├── prepare_vscode.sh             # product.json merge, patches, npm ci
+├── build.sh                      # Full build orchestration
+└── .github/workflows/            # CI: Linux + Windows + macOS
 ```
 
 `vscode/` is never committed — it is cloned fresh on every build.
 
+## Prerequisites
+
+- Node.js 22 (see `.nvmrc`)
+- Python 3.11+
+- [jq](https://jqlang.github.io/jq/)
+- Git
+- Linux: `libkrb5-dev`
+
 ## Build
+
+The build auto-detects your OS and architecture:
+
+```bash
+bash build.sh
+```
+
+Or specify explicitly:
 
 ```bash
 OS_NAME=linux VSCODE_ARCH=x64 bash build.sh
 ```
 
+Output will be in `VSCode-{platform}-{arch}/`.
+
+## Upstream Updates
+
+```bash
+# Edit upstream/stable.json with new tag + commit
+bash get_repo.sh
+cd vscode
+for p in ../patches/*.patch; do
+  git apply --check "$p" || echo "CONFLICT: $p"
+done
+cd ..
+bash build.sh
+```
+
 ## Roadmap
 
 - [x] Project plan
-- [ ] Phase 1: Build pipeline (clone → patch → compile → binary)
+- [x] Phase 1: Build pipeline (clone → patch → compile → binary)
 - [ ] Phase 2: Branding + minimalist UI defaults
 - [ ] Phase 3: Agent workflow extension (MVP)
 - [ ] Phase 4: Source-level polish
