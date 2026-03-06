@@ -221,11 +221,25 @@ bash build.sh                        # Full Build
 
 ---
 
-## Nächste Schritte (Phase 1 Implementierung)
+## Status
 
-0. Projektordner umbenennen: `vscodefork/` → `wintermute/`
-1. Git-Repo initialisieren
-2. `upstream/stable.json` mit aktuellem VS Code Tag anlegen
-3. `utils.sh`, `get_repo.sh`, `prepare_vscode.sh`, `build.sh` erstellen
-4. Ersten Build lokal testen
-5. `.github/workflows/build.yml` für CI aufsetzen
+### Phase 1: Build-Pipeline ✅
+- [x] Git-Repo initialisiert + GitHub Remote
+- [x] `upstream/stable.json` — VS Code 1.110.0 gepinnt
+- [x] `utils.sh`, `get_repo.sh`, `prepare_vscode.sh`, `build.sh` erstellt
+- [x] `product.json` — Open VSX + Branding
+- [x] `.github/workflows/build.yml` — CI für Linux, macOS, Windows
+- [ ] Ersten Build lokal testen
+
+### Phase 2: Branding + Minimale UI ✅
+- [x] `product.json` vollständig (darwinBundleIdentifier, win32AppIds, etc.)
+- [x] `patches/binary-name.patch` — Binary `code` → `wntrmte`
+- [x] `patches/brand.patch` — "Visual Studio Code" → "Wintermute"
+- [x] `patches/ui-defaults.patch` — Activity Bar, Tabs, Minimap, Breadcrumbs, Command Center aus
+- [x] `patches/telemetry.patch` — Telemetrie, Diagnostics, Crash Reporting aus
+- [x] `patches/disable-copilot.patch` — GitHub Copilot/AI Features aus
+- [x] Icons generiert (ico, png) + Copy-Logik in prepare_vscode.sh
+- [ ] macOS .icns generieren (braucht iconutil auf macOS)
+
+### Phase 3: Agent-Workflow Extension — TODO
+### Phase 4: Source-Level Polish — TODO
