@@ -17,6 +17,9 @@ extensions/*/.vscode-test/
 extensions/*/out/
 extensions/*/dist/
 
+# Source icon (keep generated icons in icons/)
+icon_v1.png
+
 # macOS
 .DS_Store
 

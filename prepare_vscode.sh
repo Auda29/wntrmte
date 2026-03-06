@@ -19,6 +19,29 @@ echo "=== Merged product.json ==="
 echo "APP_NAME=\"${APP_NAME}\""
 echo "BINARY_NAME=\"${BINARY_NAME}\""
 
+# --- Copy icons ---
+if [[ -d "../icons" ]]; then
+  echo "=== Copying icons ==="
+
+  # Windows
+  if [[ -f "../icons/wntrmte.ico" ]]; then
+    cp ../icons/wntrmte.ico resources/win32/code.ico
+  fi
+
+  # Linux
+  if [[ -f "../icons/wntrmte_128x128.png" ]]; then
+    cp ../icons/wntrmte_128x128.png resources/linux/code.png
+  fi
+  if [[ -f "../icons/wntrmte_512x512.png" ]]; then
+    cp ../icons/wntrmte_512x512.png resources/linux/rpm/code.png 2>/dev/null || true
+  fi
+
+  # macOS (.icns generated in CI via iconutil, or pre-built)
+  if [[ -f "../icons/wntrmte.icns" ]]; then
+    cp ../icons/wntrmte.icns resources/darwin/code.icns
+  fi
+fi
+
 # --- Apply patches ---
 # Core patches
 for file in ../patches/*.patch; do
