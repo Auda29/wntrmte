@@ -12,7 +12,8 @@ Wintermute is a custom VS Code distribution (VSCodium-style: build scripts + pat
 - **Minimalist UI** — no activity bar, no tabs, no minimap, no breadcrumbs by default
 - **Built-in agent workflow** — visual subagent orchestrator as a first-class feature
 - **Open VSX** marketplace instead of Microsoft's proprietary extension gallery
-- **Zero telemetry**
+- **Zero telemetry** — all data collection disabled by default
+- **No Copilot** — GitHub Copilot AI features hidden by default
 
 Binary: `wntrmte` | Data folder: `.wntrmte`
 
@@ -24,11 +25,17 @@ Wintermute never forks VS Code directly. Instead, it clones a pinned upstream co
 wntrmte/
 ├── upstream/stable.json          # Pinned VS Code commit + tag
 ├── patches/                      # Curated diffs applied at build time
+│   ├── binary-name.patch         # Binary 'code' → 'wntrmte'
+│   ├── brand.patch               # "Visual Studio Code" → "Wintermute"
+│   ├── ui-defaults.patch         # Minimalist UI defaults
+│   ├── telemetry.patch           # Disable all telemetry
+│   └── disable-copilot.patch     # Hide GitHub Copilot features
+├── icons/                        # App icons (ico, png)
 ├── extensions/wntrmte-workflow/  # Agent workflow extension (Phase 3)
 ├── product.json                  # Branding + Open VSX marketplace
 ├── utils.sh                      # Shared functions (apply_patch, replace)
 ├── get_repo.sh                   # Shallow clone by pinned commit
-├── prepare_vscode.sh             # product.json merge, patches, npm ci
+├── prepare_vscode.sh             # product.json merge, icons, patches, npm ci
 ├── build.sh                      # Full build orchestration
 └── .github/workflows/            # CI: Linux + Windows + macOS
 ```
@@ -76,7 +83,7 @@ bash build.sh
 
 - [x] Project plan
 - [x] Phase 1: Build pipeline (clone → patch → compile → binary)
-- [ ] Phase 2: Branding + minimalist UI defaults
+- [x] Phase 2: Branding + minimalist UI defaults
 - [ ] Phase 3: Agent workflow extension (MVP)
 - [ ] Phase 4: Source-level polish
 
