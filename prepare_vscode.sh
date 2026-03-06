@@ -71,8 +71,7 @@ export ELECTRON_SKIP_BINARY_DOWNLOAD=1
 export PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
 
 if [[ -f ../npmrc ]]; then
-  mv .npmrc .npmrc.bak
-  cp ../npmrc .npmrc
+  cat ../npmrc >> .npmrc
 fi
 
 for i in {1..5}; do
@@ -86,8 +85,5 @@ for i in {1..5}; do
   sleep $(( 15 * (i + 1) ))
 done
 
-if [[ -f .npmrc.bak ]]; then
-  mv .npmrc.bak .npmrc
-fi
 
 cd ..

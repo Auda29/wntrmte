@@ -12,8 +12,7 @@ index d09ab3f..a1b2c3d 100644
 -				'default': 'default',
 +				'default': 'hidden',
  				'markdownDescription': localize({ comment: ['This is the description for a setting'], key: 'activityBarLocation' }, "Controls the location of the Activity Bar relative to the Primary and Secondary Side Bars."),
-@@ -830,3 +830,3 @@ const registry = Registry.as<IConfigurationRegistry>(ConfigurationExtensions.Con
- 			[LayoutSettings.COMMAND_CENTER]: {
+@@ -831,3 +831,3 @@ const registry = Registry.as<IConfigurationRegistry>(ConfigurationExtensions.Con
  				type: 'boolean',
 -				default: true,
 +				default: false,
@@ -31,8 +30,7 @@ diff --git a/src/vs/editor/common/config/editorOptions.ts b/src/vs/editor/common
 index abcdef0..1234567 100644
 --- a/src/vs/editor/common/config/editorOptions.ts
 +++ b/src/vs/editor/common/config/editorOptions.ts
-@@ -3431,3 +3431,3 @@ class EditorMinimap extends BaseEditorOption<EditorOption.minimap, IEditorMinimapO
- 				'editor.minimap.enabled': {
+@@ -3432,3 +3432,3 @@ class EditorMinimap extends BaseEditorOption<EditorOption.minimap, IEditorMinimapO
  					type: 'boolean',
 -					default: defaults.enabled,
 +					default: false,
