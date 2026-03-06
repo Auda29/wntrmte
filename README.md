@@ -44,27 +44,28 @@ wntrmte/
 
 ## Prerequisites
 
-- Node.js 22 (see `.nvmrc`)
+- Node.js 22 via [fnm](https://github.com/Schniz/fnm) (recommended) or nvm
 - Python 3.11+
 - [jq](https://jqlang.github.io/jq/)
 - Git
-- Linux: `libkrb5-dev`
+- Linux: `krb5` (`libkrb5-dev` on Debian/Ubuntu)
 
 ## Build
 
-The build auto-detects your OS and architecture:
+Activate Node 22 first, then run the build:
 
 ```bash
+fnm use        # picks up .nvmrc automatically
 bash build.sh
 ```
 
-Or specify explicitly:
+Or specify OS/arch explicitly:
 
 ```bash
 OS_NAME=linux VSCODE_ARCH=x64 bash build.sh
 ```
 
-Output will be in `VSCode-{platform}-{arch}/`.
+Output will be in `VSCode-{platform}-{arch}/`. Build takes ~30–50 minutes (clone + npm ci + Gulp).
 
 ## Upstream Updates
 

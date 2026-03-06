@@ -229,7 +229,7 @@ bash build.sh                        # Full Build
 - [x] `utils.sh`, `get_repo.sh`, `prepare_vscode.sh`, `build.sh` erstellt
 - [x] `product.json` — Open VSX + Branding
 - [x] `.github/workflows/build.yml` — CI für Linux, macOS, Windows
-- [ ] Ersten Build lokal testen
+- [x] Ersten Build lokal erfolgreich — `VSCode-linux-x64/wntrmte` startet
 
 ### Phase 2: Branding + Minimale UI ✅
 - [x] `product.json` vollständig (darwinBundleIdentifier, win32AppIds, etc.)
