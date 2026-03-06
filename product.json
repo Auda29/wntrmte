@@ -21,5 +21,19 @@
   },
   "linkProtectionTrustedDomains": [
     "https://open-vsx.org"
-  ]
+  ],
+  "win32MutexName": "wntrmte",
+  "win32DirName": "Wintermute",
+  "win32NameVersion": "Wintermute",
+  "win32RegValueName": "Wintermute",
+  "win32AppUserModelId": "Wintermute.wntrmte",
+  "win32ShellNameShort": "W&intermute",
+  "win32ContextMenu": {
+    "x64": {
+      "clsid": "{A2F8D1B7-0B4F-4C5B-8C3E-3D6DB9FA6F31}"
+    },
+    "arm64": {
+      "clsid": "{8A5D9C44-0F14-46AB-9F65-53D8E4CB7E61}"
+    }
+  }
 }
