@@ -48,6 +48,7 @@ wntrmte/
 - Python 3.11+
 - [jq](https://jqlang.github.io/jq/)
 - Git
+- Windows: Git Bash (or another Bash environment that can run the build scripts)
 - Linux: `krb5` (`libkrb5-dev` on Debian/Ubuntu)
 
 ## Build
@@ -65,7 +66,20 @@ Or specify OS/arch explicitly:
 OS_NAME=linux VSCODE_ARCH=x64 bash build.sh
 ```
 
+Windows example:
+
+```bash
+OS_NAME=windows VSCODE_ARCH=x64 bash build.sh
+```
+
 Output will be in `VSCode-{platform}-{arch}/`. Build takes ~30–50 minutes (clone + npm ci + Gulp).
+
+Verified local outputs:
+
+- `VSCode-linux-x64/`
+- `VSCode-win32-x64/`
+
+For VS Code `1.110`, Windows packaging also requires additional `win32*` product metadata such as `win32ContextMenu`. These values are now provided in `product.json`.
 
 ## Upstream Updates
 
@@ -85,6 +99,8 @@ bash build.sh
 - [x] Project plan
 - [x] Phase 1: Build pipeline (clone → patch → compile → binary)
 - [x] Phase 2: Branding + minimalist UI defaults
+- [x] Local Linux build verified
+- [x] Local Windows x64 build verified
 - [ ] Phase 3: Agent workflow extension (MVP)
 - [ ] Phase 4: Source-level polish
 

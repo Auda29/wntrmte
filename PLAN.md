@@ -22,7 +22,7 @@ wintermute/
 │   ├── brand.patch               # Strings in Source ersetzen
 │   ├── ui-defaults.patch         # Minimalistische UI-Defaults
 │   ├── disable-copilot.patch     # Copilot UI entfernen (von VSCodium)
-│   ├── disable-telemetry.patch   # Telemetrie aus (von VSCodium)
+│   ├── telemetry.patch           # Telemetrie aus
 │   └── user/                     # Lokale Patches (gitignored)
 ├── extensions/
 │   └── wntrmte-workflow/         # Agent-Workflow Extension (Phase 3)
@@ -57,26 +57,34 @@ wintermute/
 
 4. **`prepare_vscode.sh`** — Skeleton: product.json Merge, Patch-Loop, `npm ci`
 
-5. **`build.sh`** — Ruft get_repo → prepare_vscode → gulp compile + minify + package
+5. **`build.sh`** — Ruft get_repo → prepare → compile + minify + package
 
-6. **`product.json`** — Nur extensionsGallery auf Open VSX zeigen
+6. **`product.json`** — Branding, Open VSX und plattformspezifische Produkt-Metadaten
 
 7. **`.github/workflows/build.yml`** — Matrix-Build für 3 Plattformen
 
 ### Verifikation:
 ```bash
 OS_NAME=linux VSCODE_ARCH=x64 bash build.sh
-./VSCode-linux-x64/code  # Startet ungebrandetes VS Code
+./VSCode-linux-x64/wntrmte  # Startet Wintermute unter Linux
+```
+
+```bash
+OS_NAME=windows VSCODE_ARCH=x64 bash build.sh
+./VSCode-win32-x64/Wintermute.exe  # Startet Wintermute unter Windows
 ```
 
 ---
 
 ## Phase 2: Branding + Minimale UI
 
-**Ziel:** Binary heißt "wntrmte", UI zeigt "Wintermute", UI startet Zed-ähnlich minimalistisch.
+**Ziel:** Binary heißt `wntrmte`, UI zeigt `Wintermute`, UI startet Zed-ähnlich minimalistisch.
 
 ### 2.1 `product.json` (vollständig)
-Alle Branding-Felder: `nameShort: "Wintermute"`, `nameLong: "Wintermute"`, `applicationName: "wntrmte"`, `dataFolderName: ".wntrmte"`, `darwinBundleIdentifier`, `win32AppId` (eigene GUIDs generieren), Marketplace → Open VSX.
+Alle Branding-Felder: `nameShort: "Wintermute"`, `nameLong: "Wintermute"`, `applicationName: "wntrmte"`, `dataFolderName: ".wntrmte"`, `darwinBundleIdentifier`, `win32AppId`, `win32x64AppId`, `win32arm64AppId`, `win32ContextMenu`, Marketplace → Open VSX.
+
+**Wichtige Beobachtung aus dem lokalen Windows-Build auf VS Code 1.110:**
+Das Win32-Packaging erwartet zusätzliche `win32*`-Metadaten in `product.json`, insbesondere `win32ContextMenu[arch].clsid`. Ohne diese Felder bricht `vscode-win32-x64-min-ci` im finalen Packaging ab.
 
 ### 2.2 Patches erstellen
 
@@ -85,8 +93,8 @@ Alle Branding-Felder: `nameShort: "Wintermute"`, `nameLong: "Wintermute"`, `appl
 | `binary-name.patch` | `bin/code` → `bin/wntrmte` in Gulpfile | Sehr niedrig |
 | `brand.patch` | Hardcoded "Visual Studio Code" Strings | Niedrig |
 | `ui-defaults.patch` | Defaults in `workbench.contribution.ts` ändern | Niedrig |
-| `disable-telemetry.patch` | Von VSCodium kopieren | Niedrig |
-| `disable-copilot.patch` | Von VSCodium kopieren | Mittel |
+| `telemetry.patch` | Telemetrie abschalten | Niedrig |
+| `disable-copilot.patch` | GitHub Copilot UI/Flächen verstecken | Mittel |
 
 **`ui-defaults.patch`** — Das Herzstück der Minimalisierung. Ändert Defaults in `src/vs/workbench/browser/workbench.contribution.ts`:
 
@@ -98,16 +106,22 @@ Alle Branding-Felder: `nameShort: "Wintermute"`, `nameLong: "Wintermute"`, `appl
 | `editor.minimap.enabled` | `true` → `false` |
 | `breadcrumbs.enabled` | `true` → `false` |
 
-Status Bar bleibt sichtbar (zeigt nützliche Infos wie Git-Branch, Sprache).
+Status Bar bleibt sichtbar.
 
 ### 2.3 Icons
 Eigene Icons in `icons/` erstellen → `prepare_vscode.sh` kopiert sie in `resources/darwin/`, `resources/win32/`, `resources/linux/`.
 
 ### Verifikation:
-- Title Bar zeigt "Wintermute"
+- Title Bar zeigt `Wintermute`
 - Kein Activity Bar, keine Tabs, kein Minimap, keine Breadcrumbs
-- Binary heißt `wntrmte`
-- Ctrl+Shift+P funktioniert
+- CLI/Binary heißt `wntrmte`
+- Windows-Paket erzeugt `VSCode-win32-x64/` mit `Wintermute.exe`
+- `bin/wntrmte` und `bin/wntrmte.cmd` sind vorhanden
+- `Ctrl+Shift+P` funktioniert
+
+**Offene manuelle Checks nach dem ersten Windows-Smoke-Test:**
+- Das sichtbare `CHAT`-Panel sollte noch gegen die Copilot-/AI-Entfernungsziele geprüft werden.
+- `serverDataFolderName` ist im gepackten Windows-Produkt noch nicht auf `.wntrmte` umgestellt.
 
 ---
 
@@ -167,11 +181,11 @@ Eigene Icons in `icons/` erstellen → `prepare_vscode.sh` kopiert sie in `resou
 - `fs.readFile` — Datei lesen (kein Approval nötig)
 - `fs.writeFile` — Datei schreiben (Approval required)
 - `shell.execute` — Terminal Command (Approval required)
-- `agent.delegate` — Subagent spawnen (das Alleinstellungsmerkmal!)
+- `agent.delegate` — Subagent spawnen
 
 **SubagentPool** — Parallel-Management:
 - Konfigurierbar: `wntrmte.workflow.maxParallelAgents` (default: 3)
-- `wntrmte.workflow.requireApprovalForTools` — Liste der Tools die Genehmigung brauchen
+- `wntrmte.workflow.requireApprovalForTools` — Liste der Tools, die Genehmigung brauchen
 
 **WorkflowCanvas** — React Flow Webview:
 - Live-Graph aller Tasks mit Parent→Child Edges
@@ -217,7 +231,7 @@ bash build.sh                        # Full Build
 ```
 
 **Patches mit niedrigem Konflikt-Risiko:** binary-name, CSS-Patches, telemetry
-**Patches mit höherem Risiko:** disable-copilot (ändert sich oft bei MS), ui-defaults
+**Patches mit höherem Risiko:** disable-copilot (ändert sich oft bei MS), ui-defaults und neue Win32-Produktmetadaten bei Packaging-Änderungen
 
 ---
 
@@ -229,17 +243,20 @@ bash build.sh                        # Full Build
 - [x] `utils.sh`, `get_repo.sh`, `prepare_vscode.sh`, `build.sh` erstellt
 - [x] `product.json` — Open VSX + Branding
 - [x] `.github/workflows/build.yml` — CI für Linux, macOS, Windows
-- [x] Ersten Build lokal erfolgreich — `VSCode-linux-x64/wntrmte` startet
+- [x] Lokaler Linux-Build erfolgreich — `VSCode-linux-x64/wntrmte` startet
+- [x] Lokaler Windows-x64-Build erfolgreich — `VSCode-win32-x64/Wintermute.exe` startet
 
 ### Phase 2: Branding + Minimale UI ✅
-- [x] `product.json` vollständig (darwinBundleIdentifier, win32AppIds, etc.)
+- [x] `product.json` vollständig inkl. Win32-Packaging-Metadaten
 - [x] `patches/binary-name.patch` — Binary `code` → `wntrmte`
 - [x] `patches/brand.patch` — "Visual Studio Code" → "Wintermute"
 - [x] `patches/ui-defaults.patch` — Activity Bar, Tabs, Minimap, Breadcrumbs, Command Center aus
 - [x] `patches/telemetry.patch` — Telemetrie, Diagnostics, Crash Reporting aus
-- [x] `patches/disable-copilot.patch` — GitHub Copilot/AI Features aus
-- [x] Icons generiert (ico, png) + Copy-Logik in prepare_vscode.sh
-- [ ] macOS .icns generieren (braucht iconutil auf macOS)
+- [x] `patches/disable-copilot.patch` — GitHub Copilot/AI Features ausblenden
+- [x] Icons generiert (ico, png) + Copy-Logik in `prepare_vscode.sh`
+- [ ] macOS `.icns` generieren (braucht `iconutil` auf macOS)
+- [ ] CHAT-/AI-Panels nach Windows-Smoke-Test noch weiter prüfen
+- [ ] `serverDataFolderName` auf Wintermute-Datenpfad angleichen
 
 ### Phase 3: Agent-Workflow Extension — TODO
 ### Phase 4: Source-Level Polish — TODO
