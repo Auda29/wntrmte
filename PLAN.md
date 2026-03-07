@@ -2,13 +2,15 @@
 
 ## Context
 
-Ziel ist eine eigene IDE, die minimalistisch wie Zed aussieht, aber AI-Agent-Workflows (ähnlich Cursor, mit Subagents) direkt integriert hat. Zwei-Personen-Team → VSCodium-Ansatz (Build-Scripts + Patches, kein echter Fork), um Upstream-Updates einfach nachziehen zu können.
+Ziel ist eine eigene IDE, die minimalistisch wie Zed aussieht, aber AI-Agent-Workflows direkt integriert hat. Zwei-Personen-Team → VSCodium-Ansatz (Build-Scripts + Patches, kein echter Fork), um Upstream-Updates einfach nachziehen zu können.
 
 **Name:** Wintermute (Neuromancer-Referenz)
 - Anzeigename: **Wintermute**
 - Binary/CLI: `wntrmte`
 - Datenordner: `.wntrmte`
 - Konfigurierbar über `APP_NAME` / `BINARY_NAME` in `utils.sh`
+
+**Zusammenspiel mit Patchbay:** wntrmte ist der native, tiefst-integrierte Client für Patchbay — das externe Orchestrierungs-Dashboard. wntrmte denkt von innen nach außen (IDE-Integration), Patchbay von außen nach innen (Dashboard-Steuerung). Die Phase-3-Extension wird von Anfang an als Patchbay-Client designed. Patchbay bleibt tool-agnostisch — wntrmte ist der First-Class-Client, nicht der einzige. Siehe `VISION.md` und `patchbay/PLAN.md`.
 
 ---
 
@@ -25,7 +27,7 @@ wintermute/
 │   ├── telemetry.patch           # Telemetrie aus
 │   └── user/                     # Lokale Patches (gitignored)
 ├── extensions/
-│   └── wntrmte-workflow/         # Agent-Workflow Extension (Phase 3)
+│   └── wntrmte-workflow/         # Patchbay-Client Extension (Phase 3)
 ├── icons/                        # Eigene App-Icons
 ├── product.json                  # Wird über VS Codes product.json gemerged
 ├── utils.sh                      # Placeholder-Tokens + apply_patch()
@@ -125,9 +127,9 @@ Eigene Icons in `icons/` erstellen → `prepare_vscode.sh` kopiert sie in `resou
 
 ---
 
-## Phase 3: Agent-Workflow Extension (MVP)
+## Phase 3: Patchbay-Client Extension (MVP)
 
-**Ziel:** Integrierte Extension mit visuellem Agent/Subagent-Orchestrator.
+**Ziel:** Die wntrmte Extension wird von Anfang an als nativer Patchbay-Client designed — nicht als eigenständiger Orchestrator. Patchbay ist das Orchestrierungsgehirn, wntrmte ist der First-Class-Client.
 
 ### Warum Extension zuerst (nicht Source-Patch):
 - Kein Patch-Wartungsaufwand — reiner TypeScript-Code
@@ -135,16 +137,32 @@ Eigene Icons in `icons/` erstellen → `prepare_vscode.sh` kopiert sie in `resou
 - Kann unabhängig getestet werden
 - Später in Phase 4 zu Source-Level promovierbar
 
+### Strategie: Zwei Modi
+
+**Offline-Modus (file-based):**
+- Extension liest `.project-agents/` direkt aus dem Workspace
+- Tasks, Runs, Decisions im Editor sichtbar — ohne laufendes Patchbay-Backend
+- Nützlich ab Day 1, auch bevor Patchbay als Backend fertig ist
+
+**Connected-Modus:**
+- Verbindung zu Patchbay-Backend via WebSocket/HTTP wenn vorhanden
+- Live-Updates: Task-Status, Run-Logs, neue Artifacts
+- Patchbay-Dashboard als Webview-Panel innerhalb von wntrmte
+
+**Vorteil:** Phase 3 kann beginnen, bevor Patchbay als Backend fertig ist. Die Extension ist sofort nützlich und wird automatisch mächtiger, sobald Patchbay dazukommt.
+
 ### Architektur
 
 ```
-[Workflow Canvas Webview]          ← React Flow Graph
-    ↕ postMessage
+[Patchbay Dashboard Webview]       ← Dashboard-Panel oder standalone Browser
+    ↕ postMessage / WebSocket
 [Extension Host]
-    SubagentPool                   ← Verwaltet parallele Agents
-      → AgentRunner               ← Einzelner Agent-Loop (LLM + Tools)
-        → ToolRegistry             ← Tool-Definitionen + Approval Gates
-          → TaskState              ← Immutable State Machine
+    PatchbayStore                   ← Liest .project-agents/ (offline) oder API (connected)
+      → TaskTreeProvider            ← Tree View: Tasks + Status
+      → RunLogProvider              ← Run-Logs + Artifacts anzeigen
+      → ApprovalGateHandler         ← Approval-Dialoge im Editor
+      → AgentRunner                 ← LLM-Loop pro Agent (vscode.lm API)
+        → ToolRegistry              ← Tool-Definitionen + Approval Gates
 ```
 
 ### Extension-Struktur: `extensions/wntrmte-workflow/`
@@ -152,30 +170,45 @@ Eigene Icons in `icons/` erstellen → `prepare_vscode.sh` kopiert sie in `resou
 ```
 ├── package.json                   # Views, Commands, Configuration
 ├── src/
-│   ├── extension.ts               # Aktivierung, wiring
+│   ├── extension.ts               # Aktivierung, Modus-Erkennung (offline/connected)
+│   ├── store/
+│   │   ├── PatchbayStore.ts       # Abstraction: file-based oder API-backed
+│   │   ├── FileStore.ts           # Liest/schreibt .project-agents/ direkt
+│   │   └── ApiStore.ts            # HTTP/WebSocket zu Patchbay-Backend
 │   ├── orchestrator/
-│   │   ├── TaskState.ts           # Immutable State: pending→running→completed/failed
 │   │   ├── AgentRunner.ts         # LLM-Loop pro Agent (vscode.lm API)
-│   │   ├── SubagentPool.ts        # Max-Parallel, Spawn, Cancel
-│   │   └── ToolRegistry.ts        # Tools + Approval-Liste
+│   │   ├── ToolRegistry.ts        # Tools + Approval-Liste
+│   │   └── ApprovalGate.ts        # Approval-Dialoge im Editor
 │   ├── providers/
-│   │   ├── WorkflowTreeProvider.ts # Tree View der aktiven Tasks
-│   │   └── AgentStatusBar.ts      # Status Bar: "2 Agents running"
+│   │   ├── TaskTreeProvider.ts    # Tree View: Tasks mit Status aus .project-agents/
+│   │   ├── RunLogProvider.ts      # Run-Logs + Summaries anzeigen
+│   │   └── StatusBarItem.ts       # Status Bar: "Patchbay: 2 Tasks running"
 │   └── webview/
-│       ├── WorkflowCanvas.tsx     # React Flow Graph
-│       └── TaskCard.tsx           # Node-Komponente pro Agent
+│       └── DashboardPanel.ts      # Patchbay-Dashboard als Webview (connected mode)
 ```
 
 ### Kern-Komponenten:
 
-**TaskState** — Immutable State Machine:
-- Status: `pending` | `running` | `awaiting_approval` | `delegating` | `completed` | `failed` | `cancelled`
-- Tracks: `toolCalls[]`, `subagentIds[]`, `parentId`, `output`
+**PatchbayStore** — Dual-Mode Datenzugriff:
+- `FileStore`: Liest `.project-agents/` (project.yml, tasks/, runs/, decisions/)
+- `ApiStore`: Kommuniziert mit Patchbay-Backend (HTTP/WebSocket)
+- Automatische Modus-Erkennung: `.project-agents/` vorhanden → offline, Backend erreichbar → connected
+- Nutzt das gemeinsame `.project-agents/`-Schema (definiert in `patchbay/schema/`)
+
+**TaskTreeProvider** — Task-Übersicht im Editor:
+- Zeigt Tasks nach Status gruppiert (open, in_progress, blocked, review, done)
+- Inline-Aktionen: Status ändern, Runner zuweisen, Run starten
 
 **AgentRunner** — LLM Conversation Loop:
 - Nutzt `vscode.lm.selectChatModels()` für Modell-Auswahl
 - Iteriert: Request → Stream → Tool Calls → Approval Gate → Execute → Loop
+- Schreibt Run-Logs ins `.project-agents/runs/`-Verzeichnis
 - Emittiert TaskState-Updates via EventEmitter
+
+**ApprovalGate** — Genehmigungen im Editor:
+- Tool-Calls die Genehmigung brauchen lösen Approval-Dialog direkt in wntrmte aus
+- Konfigurierbar: `wntrmte.workflow.requireApprovalForTools`
+- Mensch bestätigt im Editor, nicht im Browser
 
 **ToolRegistry** — Built-in Tools:
 - `fs.readFile` — Datei lesen (kein Approval nötig)
@@ -183,25 +216,21 @@ Eigene Icons in `icons/` erstellen → `prepare_vscode.sh` kopiert sie in `resou
 - `shell.execute` — Terminal Command (Approval required)
 - `agent.delegate` — Subagent spawnen
 
-**SubagentPool** — Parallel-Management:
-- Konfigurierbar: `wntrmte.workflow.maxParallelAgents` (default: 3)
-- `wntrmte.workflow.requireApprovalForTools` — Liste der Tools, die Genehmigung brauchen
-
-**WorkflowCanvas** — React Flow Webview:
-- Live-Graph aller Tasks mit Parent→Child Edges
-- Farbcodierung nach Status (blau=running, orange=awaiting, grün=done, rot=failed)
-- Cancel-Button pro Node
-
 ### Integration in Build:
 `prepare_vscode.sh` baut die Extension (`npm ci && npm run package`) und kopiert sie nach `vscode/extensions/wntrmte-workflow/` — wird als Built-in Extension gebundlet.
 
+### Abhängigkeit zu Patchbay:
+- **Schema:** Extension nutzt das `.project-agents/`-Format, definiert in `patchbay/schema/`
+- **Kein harter Backend-Zwang:** Offline-Modus funktioniert ohne Patchbay-Backend
+- **Später:** Shared Types via `patchbay-schema` npm-Package (siehe `VISION.md`)
+
 ### Verifikation:
-1. "Wintermute: New Agent Task" → Prompt eingeben
-2. Tree View zeigt Task-Status
-3. Workflow Canvas zeigt Graph
-4. Bei `shell.execute` erscheint Approval-Dialog
-5. `agent.delegate` spawnt sichtbaren Subagent-Node im Graph
-6. Task wird grün bei Completion
+1. Workspace mit `.project-agents/`-Ordner öffnen → Tasks erscheinen im Tree View
+2. Task-Status kann über Tree View geändert werden → `.project-agents/tasks/` wird aktualisiert
+3. "Wintermute: New Agent Task" → Run wird gestartet, Log in `.project-agents/runs/` geschrieben
+4. Bei `shell.execute` erscheint Approval-Dialog im Editor
+5. (Connected) Patchbay-Backend starten → Live-Updates im Tree View
+6. (Connected) Dashboard als Webview-Panel öffnen
 
 ---
 
@@ -213,6 +242,7 @@ Nur wenn Phase 1-3 stabil laufen:
 - **Sidebar Header entfernen** — CSS-Patch: `.part.sidebar > .title { display: none; }`
 - **Workflow in VS Code Core** — `src/vs/workbench/contrib/wntrmteWorkflow/` (additive Dateien, kein Conflict-Risiko)
 - **Custom Font** — Eigene Monospace-Schrift als Default
+- **patchbay-schema Package** — Shared Types via `file:../patchbay-schema` referenzieren, statt Schema inline in der Extension zu halten
 
 ---
 
@@ -258,5 +288,19 @@ bash build.sh                        # Full Build
 - [ ] CHAT-/AI-Panels nach Windows-Smoke-Test noch weiter prüfen
 - [ ] `serverDataFolderName` auf Wintermute-Datenpfad angleichen
 
-### Phase 3: Agent-Workflow Extension — TODO
+### Phase 3: Patchbay-Client Extension — TODO
+- [ ] `PatchbayStore` mit `FileStore` (offline, `.project-agents/`-basiert)
+- [ ] `TaskTreeProvider` — Tasks im Tree View anzeigen
+- [ ] `AgentRunner` + `ToolRegistry` + `ApprovalGate`
+- [ ] `RunLogProvider` — Run-Logs und Artifacts anzeigen
+- [ ] `StatusBarItem` — "Patchbay: X Tasks running"
+- [ ] Build-Integration: Extension wird als Built-in gebundlet
+- [ ] `ApiStore` (connected mode, WebSocket zu Patchbay-Backend)
+- [ ] `DashboardPanel` — Patchbay-Dashboard als Webview
+
 ### Phase 4: Source-Level Polish — TODO
+- [ ] Title Bar Höhe reduzieren
+- [ ] Sidebar Header entfernen
+- [ ] Workflow in VS Code Core verschieben
+- [ ] Custom Font
+- [ ] patchbay-schema als Shared Package extrahieren

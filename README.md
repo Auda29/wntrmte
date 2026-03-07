@@ -31,7 +31,7 @@ wntrmte/
 │   ├── telemetry.patch           # Disable all telemetry
 │   └── disable-copilot.patch     # Hide GitHub Copilot features
 ├── icons/                        # App icons (ico, png)
-├── extensions/wntrmte-workflow/  # Agent workflow extension (Phase 3)
+├── extensions/wntrmte-workflow/  # Patchbay client extension (Phase 3)
 ├── product.json                  # Branding + Open VSX marketplace
 ├── utils.sh                      # Shared functions (apply_patch, replace)
 ├── get_repo.sh                   # Shallow clone by pinned commit
@@ -101,8 +101,12 @@ bash build.sh
 - [x] Phase 2: Branding + minimalist UI defaults
 - [x] Local Linux build verified
 - [x] Local Windows x64 build verified
-- [ ] Phase 3: Agent workflow extension (MVP)
+- [ ] Phase 3: Patchbay client extension (MVP)
 - [ ] Phase 4: Source-level polish
+
+## Companion: Patchbay
+
+Wintermute is the native, first-class client for [Patchbay](https://github.com/Auda29/patchbay) — a lightweight orchestration dashboard for AI-assisted development. The Phase 3 extension is designed as a Patchbay client from day one, reading `.project-agents/` file-based state offline and connecting to the Patchbay backend when available. See [VISION.md](../VISION.md) for the shared architecture.
 
 ## License
 
