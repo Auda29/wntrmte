@@ -284,9 +284,9 @@ bash build.sh                        # Full Build
 - [x] `patches/telemetry.patch` — Telemetrie, Diagnostics, Crash Reporting aus
 - [x] `patches/disable-copilot.patch` — GitHub Copilot/AI Features ausblenden
 - [x] Icons generiert (ico, png) + Copy-Logik in `prepare_vscode.sh`
-- [ ] macOS `.icns` generieren (braucht `iconutil` auf macOS)
-- [ ] CHAT-/AI-Panels nach Windows-Smoke-Test noch weiter prüfen
-- [ ] `serverDataFolderName` auf Wintermute-Datenpfad angleichen
+- [x] macOS `.icns` — Auto-Generierung via `iconutil` + `sips` in `prepare_vscode.sh`
+- [x] CHAT-/AI-Panels — Erweiterter Patch: Agent Plugins, MCP Commands, Inline Chat, Installed MCP View
+- [x] `serverDataFolderName` → `.wntrmte-server` in `product.json`
 
 ### Phase 3: Patchbay-Client Extension — TODO
 - [ ] `PatchbayStore` mit `FileStore` (offline, `.project-agents/`-basiert)

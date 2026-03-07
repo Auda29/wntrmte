@@ -6,6 +6,7 @@
   "quality": "stable",
   "urlProtocol": "wntrmte",
   "serverApplicationName": "wntrmte-server",
+  "serverDataFolderName": ".wntrmte-server",
   "tunnelApplicationName": "wntrmte-tunnel",
   "darwinBundleIdentifier": "com.wintermute.wntrmte",
   "win32AppId": "{E080436D-A739-4FDB-98A4-632F5C378AA0}",

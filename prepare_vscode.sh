@@ -36,9 +36,27 @@ if [[ -d "../icons" ]]; then
     cp ../icons/wntrmte_512x512.png resources/linux/rpm/code.png 2>/dev/null || true
   fi
 
-  # macOS (.icns generated in CI via iconutil, or pre-built)
+  # macOS — generate .icns via iconutil if available, or use pre-built
   if [[ -f "../icons/wntrmte.icns" ]]; then
     cp ../icons/wntrmte.icns resources/darwin/code.icns
+  elif command -v iconutil &>/dev/null && [[ -f "../icons/wntrmte_1024x1024.png" ]]; then
+    echo "=== Generating macOS .icns via iconutil ==="
+    _iconset="../icons/wntrmte.iconset"
+    mkdir -p "${_iconset}"
+    sips -z 16 16     ../icons/wntrmte_1024x1024.png --out "${_iconset}/icon_16x16.png"    2>/dev/null
+    sips -z 32 32     ../icons/wntrmte_1024x1024.png --out "${_iconset}/icon_16x16@2x.png" 2>/dev/null
+    sips -z 32 32     ../icons/wntrmte_1024x1024.png --out "${_iconset}/icon_32x32.png"    2>/dev/null
+    sips -z 64 64     ../icons/wntrmte_1024x1024.png --out "${_iconset}/icon_32x32@2x.png" 2>/dev/null
+    sips -z 128 128   ../icons/wntrmte_128x128.png   --out "${_iconset}/icon_128x128.png"   2>/dev/null
+    sips -z 256 256   ../icons/wntrmte_256x256.png   --out "${_iconset}/icon_128x128@2x.png" 2>/dev/null
+    sips -z 256 256   ../icons/wntrmte_256x256.png   --out "${_iconset}/icon_256x256.png"   2>/dev/null
+    sips -z 512 512   ../icons/wntrmte_512x512.png   --out "${_iconset}/icon_256x256@2x.png" 2>/dev/null
+    cp ../icons/wntrmte_512x512.png   "${_iconset}/icon_512x512.png"
+    cp ../icons/wntrmte_1024x1024.png "${_iconset}/icon_512x512@2x.png"
+    iconutil -c icns "${_iconset}" -o ../icons/wntrmte.icns
+    cp ../icons/wntrmte.icns resources/darwin/code.icns
+    rm -rf "${_iconset}"
+    unset _iconset
   fi
 fi
 
