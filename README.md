@@ -1,6 +1,6 @@
 # Wintermute
 
-A minimalist AI-agent IDE built on VS Code. Inspired by Zed's clean aesthetics, with deep agent/subagent workflow integration à la Cursor.
+A minimalist AI-agent IDE built on VS Code. Inspired by Zed's clean aesthetics, with deep agent/subagent workflow integration via Patchbay.
 
 > *"Wintermute was hive mind, decision maker, effecting change in the world outside."*
 > — William Gibson, Neuromancer
@@ -10,7 +10,7 @@ A minimalist AI-agent IDE built on VS Code. Inspired by Zed's clean aesthetics, 
 Wintermute is a custom VS Code distribution (VSCodium-style: build scripts + patches, no hard fork) that ships with:
 
 - **Minimalist UI** — no activity bar, no tabs, no minimap, no breadcrumbs by default
-- **Built-in agent workflow** — visual subagent orchestrator as a first-class feature
+- **Built-in Patchbay client** — task tree, agent dispatch, run logs, and dashboard webview as a first-class feature
 - **Open VSX** marketplace instead of Microsoft's proprietary extension gallery
 - **Zero telemetry** — all data collection disabled by default
 - **No Copilot** — GitHub Copilot AI features hidden by default
@@ -30,8 +30,8 @@ wntrmte/
 │   ├── ui-defaults.patch         # Minimalist UI defaults
 │   ├── telemetry.patch           # Disable all telemetry
 │   └── disable-copilot.patch     # Hide GitHub Copilot features
-├── icons/                        # App icons (ico, png)
-├── extensions/wntrmte-workflow/  # Patchbay client extension (Phase 3)
+├── icons/                        # App icons (ico, png, icns)
+├── extensions/wntrmte-workflow/  # Built-in Patchbay client extension
 ├── product.json                  # Branding + Open VSX marketplace
 ├── utils.sh                      # Shared functions (apply_patch, replace)
 ├── get_repo.sh                   # Shallow clone by pinned commit
@@ -41,6 +41,34 @@ wntrmte/
 ```
 
 `vscode/` is never committed — it is cloned fresh on every build.
+
+## Patchbay Client Extension
+
+The bundled `wntrmte-workflow` extension is a native [Patchbay](https://github.com/Auda29/patchbay) client. It works in two modes:
+
+**Offline mode** — reads `.project-agents/` directly from the workspace. No backend required.
+
+**Connected mode** — connects to the Patchbay dashboard via HTTP/SSE for real-time updates, run submission, and an embedded dashboard webview.
+
+Mode is auto-detected (probes `localhost:3000`), or configurable via `wntrmte.workflow.mode`.
+
+### Features
+
+| Feature | Description |
+|---------|------------|
+| **Task Tree** | Tasks grouped by status in the Explorer sidebar |
+| **Run Logs** | View run details, logs, and summaries |
+| **Status Bar** | Live count of running/blocked/open tasks |
+| **Agent Dispatch** | Run an LLM agent on a task via `vscode.lm` API |
+| **Approval Gate** | Allow/Allow All/Deny dialogs before tool execution |
+| **Dashboard Webview** | Embedded Patchbay dashboard panel (connected mode) |
+
+### Commands
+
+- `Wintermute: Dispatch Task to Agent` — select a task and run the AgentRunner
+- `Wintermute: Open Patchbay Dashboard` — open the dashboard as a webview
+- `Wintermute: Set Task Status` — change task status from the tree view
+- `Wintermute: Switch Connection Mode` — toggle auto/offline/connected
 
 ## Prerequisites
 
@@ -74,13 +102,6 @@ OS_NAME=windows VSCODE_ARCH=x64 bash build.sh
 
 Output will be in `VSCode-{platform}-{arch}/`. Build takes ~30–50 minutes (clone + npm ci + Gulp).
 
-Verified local outputs:
-
-- `VSCode-linux-x64/`
-- `VSCode-win32-x64/`
-
-For VS Code `1.110`, Windows packaging also requires additional `win32*` product metadata such as `win32ContextMenu`. These values are now provided in `product.json`.
-
 ## Upstream Updates
 
 ```bash
@@ -96,17 +117,14 @@ bash build.sh
 
 ## Roadmap
 
-- [x] Project plan
 - [x] Phase 1: Build pipeline (clone → patch → compile → binary)
 - [x] Phase 2: Branding + minimalist UI defaults
-- [x] Local Linux build verified
-- [x] Local Windows x64 build verified
-- [ ] Phase 3: Patchbay client extension (MVP)
+- [x] Phase 3: Patchbay client extension (offline + connected + AgentRunner)
 - [ ] Phase 4: Source-level polish
 
 ## Companion: Patchbay
 
-Wintermute is the native, first-class client for [Patchbay](https://github.com/Auda29/patchbay) — a lightweight orchestration dashboard for AI-assisted development. The Phase 3 extension is designed as a Patchbay client from day one, reading `.project-agents/` file-based state offline and connecting to the Patchbay backend when available. See [VISION.md](../VISION.md) for the shared architecture.
+Wintermute is the native, first-class client for [Patchbay](https://github.com/Auda29/patchbay) — a lightweight orchestration dashboard for AI-assisted development. Patchbay thinks from the outside in (dashboard control), Wintermute from the inside out (IDE integration). Together they form a coherent abstraction layer.
 
 ## License
 
