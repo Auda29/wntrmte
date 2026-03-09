@@ -1,0 +1,85 @@
+{
+  "name": "wntrmte-workflow",
+  "displayName": "Wintermute Workflow",
+  "description": "Patchbay client — task tree, run logs, and status for .project-agents workspaces",
+  "version": "0.1.0",
+  "publisher": "wintermute",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.110.0"
+  },
+  "categories": ["Other"],
+  "activationEvents": [
+    "workspaceContains:.project-agents"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "views": {
+      "explorer": [
+        {
+          "id": "wntrmte.taskTree",
+          "name": "Patchbay Tasks",
+          "when": "wntrmte.projectAgentsFound"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "wntrmte.refresh",
+        "title": "Refresh",
+        "icon": "$(refresh)",
+        "category": "Wintermute"
+      },
+      {
+        "command": "wntrmte.setStatus",
+        "title": "Set Task Status",
+        "category": "Wintermute"
+      },
+      {
+        "command": "wntrmte.openRun",
+        "title": "Open Run Log",
+        "category": "Wintermute"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "wntrmte.refresh",
+          "when": "view == wntrmte.taskTree",
+          "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "wntrmte.setStatus",
+          "when": "viewItem == task",
+          "group": "inline"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Wintermute Workflow",
+      "properties": {
+        "wntrmte.workflow.projectAgentsDir": {
+          "type": "string",
+          "default": ".project-agents",
+          "description": "Path to the .project-agents directory (relative to workspace root)."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "compile": "esbuild src/extension.ts --bundle --outfile=out/extension.js --platform=node --external:vscode --sourcemap",
+    "watch": "esbuild src/extension.ts --bundle --outfile=out/extension.js --platform=node --external:vscode --sourcemap --watch"
+  },
+  "devDependencies": {
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^22.0.0",
+    "@types/vscode": "^1.110.0",
+    "esbuild": "^0.24.0",
+    "typescript": "^5.6.0"
+  },
+  "dependencies": {
+    "js-yaml": "^4.1.0"
+  }
+}
