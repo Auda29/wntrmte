@@ -299,7 +299,7 @@ bash build.sh                        # Full Build
 - [x] `AgentRunner` — LLM-Loop via vscode.lm API mit Tool-Aufrufen
 - [x] `ToolRegistry` — fs_readFile, fs_writeFile, fs_listDir, shell_execute
 - [x] `ApprovalGate` — Allow/Allow All/Deny Dialoge im Editor
-- [ ] Build-Integration: Extension wird als Built-in gebundlet
+- [x] Build-Integration: Extension wird als Built-in gebundlet (`prepare_vscode.sh` Zeilen 63-71)
 
 ### Phase 4: Source-Level Polish — TODO
 - [ ] Title Bar Höhe reduzieren
