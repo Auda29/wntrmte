@@ -85,24 +85,6 @@ diff --git a/src/vs/workbench/contrib/chat/browser/chat.contribution.ts b/src/vs
 index d50fc45..752102b 100644
 --- a/src/vs/workbench/contrib/chat/browser/chat.contribution.ts
 +++ b/src/vs/workbench/contrib/chat/browser/chat.contribution.ts
-@@ -537,7 +537,7 @@ configurationRegistry.registerConfiguration({
- 			],
- 			enumDescriptions: [
- 				nls.localize('chat.mcp.access.none', "No access to MCP servers."),
--				nls.localize('chat.mcp.access.registry', "Allows access to MCP servers installed from the registry that VS Code is connected to."),
-+				nls.localize('chat.mcp.access.registry', "Allows access to MCP servers installed from the registry that Wintermute is connected to."),
- 				nls.localize('chat.mcp.access.any', "Allow access to any installed MCP server.")
- 			],
- 			default: McpAccessValue.All,
-@@ -564,7 +564,7 @@ configurationRegistry.registerConfiguration({
- 							key: 'chat.mcp.access.none', value: nls.localize('chat.mcp.access.none', "No access to MCP servers."),
- 						},
- 						{
--							key: 'chat.mcp.access.registry', value: nls.localize('chat.mcp.access.registry', "Allows access to MCP servers installed from the registry that VS Code is connected to."),
-+							key: 'chat.mcp.access.registry', value: nls.localize('chat.mcp.access.registry', "Allows access to MCP servers installed from the registry that Wintermute is connected to."),
- 						},
- 						{
- 							key: 'chat.mcp.access.any', value: nls.localize('chat.mcp.access.any', "Allow access to any installed MCP server.")
 @@ -1193,7 +1193,7 @@ configurationRegistry.registerConfiguration({
  		[ChatConfiguration.AIDisabled]: {
  			type: 'boolean',
@@ -132,9 +114,9 @@ index ddb5df4..7831288 100644
 +		ContextKeyExpr.has('config.chat.disableAIFeatures').negate(),
 +		ChatContextKeys.Setup.disabled.negate(),
 +		ChatContextKeys.Setup.hidden.negate(),
-+ 		ChatContextKeys.panelParticipantRegistered,
++		ChatContextKeys.panelParticipantRegistered,
 +		ChatContextKeys.extensionInvalid.negate()
-+ 	)
++	)
  };
  Registry.as<IViewsRegistry>(ViewExtensions.ViewsRegistry).registerViews([chatViewDescriptor], chatViewContainer);
  
@@ -253,15 +235,6 @@ diff --git a/src/vs/workbench/contrib/mcp/browser/mcpServersView.ts b/src/vs/wor
 index 9e82f11..46c9fc0 100644
 --- a/src/vs/workbench/contrib/mcp/browser/mcpServersView.ts
 +++ b/src/vs/workbench/contrib/mcp/browser/mcpServersView.ts
-@@ -274,7 +274,7 @@ export class McpServersListView extends AbstractExtensionsListView<IWorkbenchMcp
- 		const description = dom.append(welcomeContent, dom.$('.mcp-welcome-description'));
- 		const markdownResult = this._register(this.markdownRendererService.render(
- 			new MarkdownString(
--				localize('mcp.welcome.descriptionWithLink', "Browse and install [Model Context Protocol (MCP) servers](https://code.visualstudio.com/docs/copilot/customization/mcp-servers) directly from VS Code to extend agent mode with extra tools for connecting to databases, invoking APIs and performing specialized tasks."),
-+				localize('mcp.welcome.descriptionWithLink', "Browse and install [Model Context Protocol (MCP) servers](https://code.visualstudio.com/docs/copilot/customization/mcp-servers) directly from Wintermute to extend agent mode with extra tools for connecting to databases, invoking APIs and performing specialized tasks."),
- 				{ isTrusted: { enabledCommands: ['workbench.action.openSettings'] } },
- 			)
- 				.appendMarkdown('\n\n')
 @@ -543,7 +543,7 @@ export class McpServersViewsContribution extends Disposable implements IWorkbenc
  				id: InstalledMcpServersViewId,
  				name: localize2('mcp-installed', "MCP Servers - Installed"),
