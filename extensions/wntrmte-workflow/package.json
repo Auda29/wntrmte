@@ -105,14 +105,12 @@
     "compile": "esbuild src/extension.ts --bundle --outfile=out/extension.js --platform=node --external:vscode --sourcemap",
     "watch": "esbuild src/extension.ts --bundle --outfile=out/extension.js --platform=node --external:vscode --sourcemap --watch"
   },
-  "dependencies": {
-    "eventsource": "^3.0.0"
-  },
   "devDependencies": {
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^22.0.0",
     "@types/vscode": "^1.109.0",
     "esbuild": "^0.24.0",
+    "eventsource": "^3.0.0",
     "js-yaml": "^4.1.0",
     "typescript": "^5.6.0"
   }
