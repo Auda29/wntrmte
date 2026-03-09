@@ -1,8 +1,8 @@
 {
   "name": "wntrmte-workflow",
   "displayName": "Wintermute Workflow",
-  "description": "Patchbay client — task tree, run logs, and status for .project-agents workspaces",
-  "version": "0.1.0",
+  "description": "Patchbay client — task tree, run logs, agent dispatch, and status for .project-agents workspaces",
+  "version": "0.2.0",
   "publisher": "wintermute",
   "license": "MIT",
   "engines": {
@@ -39,12 +39,34 @@
         "command": "wntrmte.openRun",
         "title": "Open Run Log",
         "category": "Wintermute"
+      },
+      {
+        "command": "wntrmte.openDashboard",
+        "title": "Open Patchbay Dashboard",
+        "icon": "$(dashboard)",
+        "category": "Wintermute"
+      },
+      {
+        "command": "wntrmte.dispatch",
+        "title": "Dispatch Task to Agent",
+        "icon": "$(play)",
+        "category": "Wintermute"
+      },
+      {
+        "command": "wntrmte.switchMode",
+        "title": "Switch Connection Mode",
+        "category": "Wintermute"
       }
     ],
     "menus": {
       "view/title": [
         {
           "command": "wntrmte.refresh",
+          "when": "view == wntrmte.taskTree",
+          "group": "navigation"
+        },
+        {
+          "command": "wntrmte.dispatch",
           "when": "view == wntrmte.taskTree",
           "group": "navigation"
         }
@@ -64,6 +86,17 @@
           "type": "string",
           "default": ".project-agents",
           "description": "Path to the .project-agents directory (relative to workspace root)."
+        },
+        "wntrmte.workflow.dashboardUrl": {
+          "type": "string",
+          "default": "http://localhost:3000",
+          "description": "URL of the Patchbay Dashboard (for connected mode and webview)."
+        },
+        "wntrmte.workflow.mode": {
+          "type": "string",
+          "enum": ["auto", "offline", "connected"],
+          "default": "auto",
+          "description": "Connection mode. 'auto' probes the dashboard URL on activation."
         }
       }
     }
@@ -71,6 +104,9 @@
   "scripts": {
     "compile": "esbuild src/extension.ts --bundle --outfile=out/extension.js --platform=node --external:vscode --sourcemap",
     "watch": "esbuild src/extension.ts --bundle --outfile=out/extension.js --platform=node --external:vscode --sourcemap --watch"
+  },
+  "dependencies": {
+    "eventsource": "^3.0.0"
   },
   "devDependencies": {
     "@types/js-yaml": "^4.0.9",

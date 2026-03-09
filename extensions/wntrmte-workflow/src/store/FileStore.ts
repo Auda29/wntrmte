@@ -97,7 +97,7 @@ export class FileStore implements PatchbayStore {
           runner: data.runner ?? 'unknown',
           startTime: data.startTime ?? '',
           endTime: data.endTime,
-          status: data.status ?? 'complete',
+          status: data.status ?? 'completed',
           logs: data.logs,
           summary: data.summary,
           diffRef: data.diffRef,
@@ -122,6 +122,14 @@ export class FileStore implements PatchbayStore {
       `$1${status}`
     );
     await fs.writeFile(task.filePath, updated, 'utf-8');
+  }
+
+  async saveRun(run: Run): Promise<void> {
+    const runsDir = path.join(this._agentsDir, 'runs');
+    await fs.mkdir(runsDir, { recursive: true });
+    const filePath = path.join(runsDir, `${run.id}.json`);
+    const { filePath: _, ...data } = run;
+    await fs.writeFile(filePath, JSON.stringify(data, null, 2), 'utf-8');
   }
 
   async getProject(): Promise<Project | undefined> {

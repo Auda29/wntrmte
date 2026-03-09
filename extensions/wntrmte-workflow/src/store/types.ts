@@ -1,7 +1,7 @@
 // Types aligned with @patchbay/core — do not diverge from patchbay/schema/
 
 export type TaskStatus = 'open' | 'in_progress' | 'blocked' | 'review' | 'done';
-export type RunStatus = 'running' | 'complete' | 'failed';
+export type RunStatus = 'running' | 'completed' | 'failed' | 'cancelled';
 
 export interface Task {
   id: string;

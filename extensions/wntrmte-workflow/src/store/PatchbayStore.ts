@@ -7,5 +7,6 @@ export interface PatchbayStore {
   getRuns(taskId: string): Promise<Run[]>;
   updateTaskStatus(taskId: string, status: TaskStatus): Promise<void>;
   getProject(): Promise<Project | undefined>;
+  saveRun(run: Run): Promise<void>;
   dispose(): void;
 }

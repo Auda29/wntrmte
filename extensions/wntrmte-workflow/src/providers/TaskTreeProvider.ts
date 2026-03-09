@@ -59,7 +59,7 @@ class RunNode extends vscode.TreeItem {
     this.description = run.status;
     this.tooltip = run.summary ?? run.id;
     this.iconPath = new vscode.ThemeIcon(
-      run.status === 'complete' ? 'pass' :
+      run.status === 'completed' ? 'pass' :
       run.status === 'running'  ? 'loading~spin' : 'error'
     );
     this.contextValue = 'run';

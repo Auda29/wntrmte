@@ -288,15 +288,18 @@ bash build.sh                        # Full Build
 - [x] CHAT-/AI-Panels — Erweiterter Patch: Agent Plugins, MCP Commands, Inline Chat, Installed MCP View
 - [x] `serverDataFolderName` → `.wntrmte-server` in `product.json`
 
-### Phase 3: Patchbay-Client Extension — TODO
-- [ ] `PatchbayStore` mit `FileStore` (offline, `.project-agents/`-basiert)
-- [ ] `TaskTreeProvider` — Tasks im Tree View anzeigen
-- [ ] `AgentRunner` + `ToolRegistry` + `ApprovalGate`
-- [ ] `RunLogProvider` — Run-Logs und Artifacts anzeigen
-- [ ] `StatusBarItem` — "Patchbay: X Tasks running"
+### Phase 3: Patchbay-Client Extension ✅
+- [x] `PatchbayStore` mit `FileStore` (offline, `.project-agents/`-basiert)
+- [x] `TaskTreeProvider` — Tasks im Tree View anzeigen
+- [x] `RunLogProvider` — Run-Logs und Artifacts anzeigen
+- [x] `StatusBarItem` — "Patchbay: X Tasks running"
+- [x] `ApiStore` (connected mode, SSE zu Patchbay-Backend)
+- [x] `StoreFactory` — Auto-Erkennung offline/connected mit Probe
+- [x] `DashboardPanel` — Patchbay-Dashboard als Webview (iframe)
+- [x] `AgentRunner` — LLM-Loop via vscode.lm API mit Tool-Aufrufen
+- [x] `ToolRegistry` — fs_readFile, fs_writeFile, fs_listDir, shell_execute
+- [x] `ApprovalGate` — Allow/Allow All/Deny Dialoge im Editor
 - [ ] Build-Integration: Extension wird als Built-in gebundlet
-- [ ] `ApiStore` (connected mode, WebSocket zu Patchbay-Backend)
-- [ ] `DashboardPanel` — Patchbay-Dashboard als Webview
 
 ### Phase 4: Source-Level Polish — TODO
 - [ ] Title Bar Höhe reduzieren
