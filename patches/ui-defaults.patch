@@ -1,90 +1,129 @@
-diff --git a/src/vs/workbench/browser/workbench.contribution.ts b/src/vs/workbench/browser/workbench.contribution.ts
-index d09ab3f..b2c3d4e 100644
---- a/src/vs/workbench/browser/workbench.contribution.ts
-+++ b/src/vs/workbench/browser/workbench.contribution.ts
-@@ -68,3 +68,3 @@ const registry = Registry.as<IConfigurationRegistry>(ConfigurationExtensions.Con
- 				'description': localize('showEditorTabs', "Controls whether opened editors should show as individual tabs, one single large tab or if the title area should not be shown."),
--				'default': 'multiple'
-+				'default': 'none'
- 			},
-@@ -641,3 +641,3 @@ const registry = Registry.as<IConfigurationRegistry>(ConfigurationExtensions.Con
- 				'enum': ['default', 'top', 'bottom', 'hidden'],
--				'default': 'default',
-+				'default': 'hidden',
- 				'markdownDescription': localize({ comment: ['This is the description for a setting'], key: 'activityBarLocation' }, "Controls the location of the Activity Bar relative to the Primary and Secondary Side Bars."),
-@@ -730,3 +730,3 @@ const registry = Registry.as<IConfigurationRegistry>(ConfigurationExtensions.Con
- 				'type': 'string',
--				'default': 'visibleInWorkspace',
-+				'default': 'hidden',
- 				'description': localize('secondarySideBarDefaultVisibility', "Controls the default visibility of the secondary side bar in workspaces or empty windows that are opened for the first time. Can be overridden by the agent sessions startup editor setting."),
-@@ -831,3 +831,3 @@ const registry = Registry.as<IConfigurationRegistry>(ConfigurationExtensions.Con
- 				type: 'boolean',
--				default: true,
-+				default: false,
- 				markdownDescription: isWeb ?
-diff --git a/src/vs/workbench/browser/parts/editor/breadcrumbs.ts b/src/vs/workbench/browser/parts/editor/breadcrumbs.ts
-index abcdef0..1234567 100644
---- a/src/vs/workbench/browser/parts/editor/breadcrumbs.ts
-+++ b/src/vs/workbench/browser/parts/editor/breadcrumbs.ts
-@@ -125,3 +125,3 @@ configurationRegistry.registerConfiguration({
- 			type: 'boolean',
--			default: true
-+			default: false
- 		},
 diff --git a/src/vs/editor/common/config/editorOptions.ts b/src/vs/editor/common/config/editorOptions.ts
-index abcdef0..1234567 100644
+index 34cdd09..4e7761f 100644
 --- a/src/vs/editor/common/config/editorOptions.ts
 +++ b/src/vs/editor/common/config/editorOptions.ts
-@@ -3432,3 +3432,3 @@ class EditorMinimap extends BaseEditorOption<EditorOption.minimap, IEditorMinimapO
+@@ -3430,7 +3430,7 @@ class EditorMinimap extends BaseEditorOption<EditorOption.minimap, IEditorMinima
+ 			{
+ 				'editor.minimap.enabled': {
  					type: 'boolean',
 -					default: defaults.enabled,
 +					default: false,
  					description: nls.localize('minimap.enabled', "Controls whether the minimap is shown.")
+ 				},
+ 				'editor.minimap.autohide': {
 diff --git a/src/vs/platform/window/common/window.ts b/src/vs/platform/window/common/window.ts
-index abcdef0..1234567 100644
+index 291648b..d647f9b 100644
 --- a/src/vs/platform/window/common/window.ts
 +++ b/src/vs/platform/window/common/window.ts
-@@ -118,4 +118,4 @@ export function getWindowControlsStyle(configurationService: IConfigurationServic
+@@ -293,7 +293,7 @@ export function getWindowControlsStyle(configurationService: IConfigurationServi
  	return WindowControlsStyle.NATIVE; // default to native on all OS
  }
  
 -export const DEFAULT_CUSTOM_TITLEBAR_HEIGHT = 35; // includes space for command center
 +export const DEFAULT_CUSTOM_TITLEBAR_HEIGHT = 28;
-diff --git a/src/vs/workbench/browser/parts/titlebar/titlebarPart.ts b/src/vs/workbench/browser/parts/titlebar/titlebarPart.ts
-index abcdef0..1234567 100644
---- a/src/vs/workbench/browser/parts/titlebar/titlebarPart.ts
-+++ b/src/vs/workbench/browser/parts/titlebar/titlebarPart.ts
-@@ -129,4 +129,4 @@ export class BrowserTitlebarPart extends Part implements ITitlebarPart {
- 	get minimumHeight(): number {
- 		const wcoEnabled = isWeb && isWCOEnabled();
--		let value = this.isCommandCenterVisible || wcoEnabled ? DEFAULT_CUSTOM_TITLEBAR_HEIGHT : 30;
-+		let value = this.isCommandCenterVisible || wcoEnabled ? DEFAULT_CUSTOM_TITLEBAR_HEIGHT : 28;
- 		if (wcoEnabled) {
+ 
+ export function useWindowControlsOverlay(configurationService: IConfigurationService): boolean {
+ 	if (isWeb) {
 diff --git a/src/vs/workbench/browser/part.ts b/src/vs/workbench/browser/part.ts
-index abcdef0..1234567 100644
+index 50776ac..5db49d8 100644
 --- a/src/vs/workbench/browser/part.ts
 +++ b/src/vs/workbench/browser/part.ts
-@@ -110,5 +110,5 @@ class PartLayout {
+@@ -201,8 +201,8 @@ export abstract class Part<MementoType extends object = object> extends Componen
+ 
+ class PartLayout {
+ 
 -	private static readonly HEADER_HEIGHT = 35;
 -	private static readonly TITLE_HEIGHT = 35;
 +	private static readonly HEADER_HEIGHT = 28;
 +	private static readonly TITLE_HEIGHT = 28;
  	private static readonly Footer_HEIGHT = 35;
+ 
  	private headerVisible: boolean = false;
- 	private footerVisible: boolean = false;
+diff --git a/src/vs/workbench/browser/parts/editor/breadcrumbs.ts b/src/vs/workbench/browser/parts/editor/breadcrumbs.ts
+index 2daec62..f3bb0b3 100644
+--- a/src/vs/workbench/browser/parts/editor/breadcrumbs.ts
++++ b/src/vs/workbench/browser/parts/editor/breadcrumbs.ts
+@@ -125,7 +125,7 @@ Registry.as<IConfigurationRegistry>(Extensions.Configuration).registerConfigurat
+ 		'breadcrumbs.enabled': {
+ 			description: localize('enabled', "Enable/disable navigation breadcrumbs."),
+ 			type: 'boolean',
+-			default: true
++			default: false
+ 		},
+ 		'breadcrumbs.filePath': {
+ 			description: localize('filepath', "Controls whether and how file paths are shown in the breadcrumbs view."),
 diff --git a/src/vs/workbench/browser/parts/media/paneCompositePart.css b/src/vs/workbench/browser/parts/media/paneCompositePart.css
-index abcdef0..1234567 100644
+index fe0f2ad..2b578b0 100644
 --- a/src/vs/workbench/browser/parts/media/paneCompositePart.css
 +++ b/src/vs/workbench/browser/parts/media/paneCompositePart.css
-@@ -15,4 +15,4 @@
+@@ -67,7 +67,7 @@
+ 
  .monaco-workbench .pane-composite-part > .title > .composite-bar-container > .composite-bar > .monaco-action-bar,
  .monaco-workbench .pane-composite-part > .header-or-footer > .composite-bar-container > .composite-bar > .monaco-action-bar {
 -	line-height: 27px; /* matches panel titles in settings */
 +	line-height: 22px; /* matches compact Wintermute headers */
  }
-@@ -21,4 +21,4 @@
+ 
+ .monaco-workbench .pane-composite-part > .title > .composite-bar-container > .composite-bar > .monaco-action-bar .action-item,
+@@ -83,7 +83,7 @@
+ 
  .monaco-workbench .pane-composite-part > .title > .composite-bar-container >.composite-bar > .monaco-action-bar .action-item.icon,
  .monaco-workbench .pane-composite-part > .header-or-footer > .composite-bar-container >.composite-bar > .monaco-action-bar .action-item.icon {
 -	height: 35px; /* matches height of composite container */
 +	height: 28px; /* matches compact composite container */
  	padding: 0 3px;
+ }
+ 
+diff --git a/src/vs/workbench/browser/parts/titlebar/titlebarPart.ts b/src/vs/workbench/browser/parts/titlebar/titlebarPart.ts
+index 98895a3..7dff54f 100644
+--- a/src/vs/workbench/browser/parts/titlebar/titlebarPart.ts
++++ b/src/vs/workbench/browser/parts/titlebar/titlebarPart.ts
+@@ -226,7 +226,7 @@ export class BrowserTitlebarPart extends Part implements ITitlebarPart {
+ 
+ 	get minimumHeight(): number {
+ 		const wcoEnabled = isWeb && isWCOEnabled();
+-		let value = this.isCommandCenterVisible || wcoEnabled ? DEFAULT_CUSTOM_TITLEBAR_HEIGHT : 30;
++		let value = this.isCommandCenterVisible || wcoEnabled ? DEFAULT_CUSTOM_TITLEBAR_HEIGHT : 28;
+ 		if (wcoEnabled) {
+ 			value = Math.max(value, getWCOTitlebarAreaRect(getWindow(this.element))?.height ?? 0);
+ 		}
+diff --git a/src/vs/workbench/browser/workbench.contribution.ts b/src/vs/workbench/browser/workbench.contribution.ts
+index 058693c..7cd466b 100644
+--- a/src/vs/workbench/browser/workbench.contribution.ts
++++ b/src/vs/workbench/browser/workbench.contribution.ts
+@@ -67,7 +67,7 @@ const registry = Registry.as<IConfigurationRegistry>(ConfigurationExtensions.Con
+ 					localize('workbench.editor.showTabs.none', "The editor title area is not displayed."),
+ 				],
+ 				'description': localize('showEditorTabs', "Controls whether opened editors should show as individual tabs, one single large tab or if the title area should not be shown."),
+-				'default': 'multiple'
++				'default': 'none'
+ 			},
+ 			[LayoutSettings.EDITOR_ACTIONS_LOCATION]: {
+ 				'type': 'string',
+@@ -591,7 +591,7 @@ const registry = Registry.as<IConfigurationRegistry>(ConfigurationExtensions.Con
+ 			'workbench.secondarySideBar.defaultVisibility': {
+ 				'type': 'string',
+ 				'enum': ['hidden', 'visibleInWorkspace', 'visible', 'maximizedInWorkspace', 'maximized'],
+-				'default': 'visibleInWorkspace',
++				'default': 'hidden',
+ 				'description': localize('secondarySideBarDefaultVisibility', "Controls the default visibility of the secondary side bar in workspaces or empty windows that are opened for the first time. Can be overridden by the agent sessions startup editor setting."),
+ 				'enumDescriptions': [
+ 					localize('workbench.secondarySideBar.defaultVisibility.hidden', "The secondary side bar is hidden by default."),
+@@ -640,7 +640,7 @@ const registry = Registry.as<IConfigurationRegistry>(ConfigurationExtensions.Con
+ 			[LayoutSettings.ACTIVITY_BAR_LOCATION]: {
+ 				'type': 'string',
+ 				'enum': ['default', 'top', 'bottom', 'hidden'],
+-				'default': 'default',
++				'default': 'hidden',
+ 				'markdownDescription': localize({ comment: ['This is the description for a setting'], key: 'activityBarLocation' }, "Controls the location of the Activity Bar relative to the Primary and Secondary Side Bars."),
+ 				'enumDescriptions': [
+ 					localize('workbench.activityBar.location.default', "Show the Activity Bar on the side of the Primary Side Bar and on top of the Secondary Side Bar."),
+@@ -829,7 +829,7 @@ const registry = Registry.as<IConfigurationRegistry>(ConfigurationExtensions.Con
+ 			},
+ 			[LayoutSettings.COMMAND_CENTER]: {
+ 				type: 'boolean',
+-				default: true,
++				default: false,
+ 				markdownDescription: isWeb ?
+ 					localize('window.commandCenterWeb', "Show command launcher together with the window title.") :
+ 					localize({ key: 'window.commandCenter', comment: ['{0}, {1} is a placeholder for a setting identifier.'] }, "Show command launcher together with the window title. This setting only has an effect when {0} is not set to {1}.", '`#window.customTitleBarVisibility#`', '`never`')
