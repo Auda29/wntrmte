@@ -35,3 +35,60 @@ index abcdef0..1234567 100644
 -					default: defaults.enabled,
 +					default: false,
  					description: nls.localize('minimap.enabled', "Controls whether the minimap is shown.")
+diff --git a/src/vs/platform/window/common/window.ts b/src/vs/platform/window/common/window.ts
+index abcdef0..1234567 100644
+--- a/src/vs/platform/window/common/window.ts
++++ b/src/vs/platform/window/common/window.ts
+@@ -120,3 +120,3 @@ export function getWindowControlsStyle(configurationService: IConfigurationServic
+ }
+ 
+-export const DEFAULT_CUSTOM_TITLEBAR_HEIGHT = 35; // includes space for command center
++export const DEFAULT_CUSTOM_TITLEBAR_HEIGHT = 28;
+ 
+diff --git a/src/vs/workbench/browser/parts/titlebar/titlebarPart.ts b/src/vs/workbench/browser/parts/titlebar/titlebarPart.ts
+index abcdef0..1234567 100644
+--- a/src/vs/workbench/browser/parts/titlebar/titlebarPart.ts
++++ b/src/vs/workbench/browser/parts/titlebar/titlebarPart.ts
+@@ -129,3 +129,3 @@ export class BrowserTitlebarPart extends Part implements ITitlebarPart {
+ 	get minimumHeight(): number {
+ 		const wcoEnabled = isWeb && isWCOEnabled();
+-		let value = this.isCommandCenterVisible || wcoEnabled ? DEFAULT_CUSTOM_TITLEBAR_HEIGHT : 30;
++		let value = this.isCommandCenterVisible || wcoEnabled ? DEFAULT_CUSTOM_TITLEBAR_HEIGHT : 28;
+ 		if (wcoEnabled) {
+diff --git a/src/vs/workbench/browser/part.ts b/src/vs/workbench/browser/part.ts
+index abcdef0..1234567 100644
+--- a/src/vs/workbench/browser/part.ts
++++ b/src/vs/workbench/browser/part.ts
+@@ -110,6 +110,6 @@ class PartLayout {
+-	private static readonly HEADER_HEIGHT = 35;
+-	private static readonly TITLE_HEIGHT = 35;
++	private static readonly HEADER_HEIGHT = 28;
++	private static readonly TITLE_HEIGHT = 28;
+ 	private static readonly Footer_HEIGHT = 35;
+ 	private headerVisible: boolean = false;
+ 	private footerVisible: boolean = false;
+diff --git a/src/vs/workbench/browser/parts/media/paneCompositePart.css b/src/vs/workbench/browser/parts/media/paneCompositePart.css
+index abcdef0..1234567 100644
+--- a/src/vs/workbench/browser/parts/media/paneCompositePart.css
++++ b/src/vs/workbench/browser/parts/media/paneCompositePart.css
+@@ -15,3 +15,3 @@
+ .monaco-workbench .pane-composite-part > .title > .composite-bar-container > .composite-bar > .monaco-action-bar,
+ .monaco-workbench .pane-composite-part > .header-or-footer > .composite-bar-container > .composite-bar > .monaco-action-bar {
+-	line-height: 27px; /* matches panel titles in settings */
++	line-height: 22px; /* matches compact Wintermute headers */
+ }
+@@ -21,3 +21,3 @@
+ .monaco-workbench .pane-composite-part > .title > .composite-bar-container >.composite-bar > .monaco-action-bar .action-item.icon,
+ .monaco-workbench .pane-composite-part > .header-or-footer > .composite-bar-container >.composite-bar > .monaco-action-bar .action-item.icon {
+-	height: 35px; /* matches height of composite container */
++	height: 28px; /* matches compact composite container */
+ 	padding: 0 3px;
+diff --git a/src/vs/workbench/browser/workbench.contribution.ts b/src/vs/workbench/browser/workbench.contribution.ts
+index a1b2c3d..b2c3d4e 100644
+--- a/src/vs/workbench/browser/workbench.contribution.ts
++++ b/src/vs/workbench/browser/workbench.contribution.ts
+@@ -710,3 +710,3 @@ const registry = Registry.as<IConfigurationRegistry>(ConfigurationExtensions.Con
+ 			'type': 'string',
+-			'default': 'visibleInWorkspace',
++			'default': 'hidden',
+ 			'description': localize('secondarySideBarDefaultVisibility', "Controls the default visibility of the secondary side bar in workspaces or empty windows that are opened for the first time. Can be overridden by the agent sessions startup editor setting."),

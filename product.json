@@ -23,6 +23,11 @@
   "linkProtectionTrustedDomains": [
     "https://open-vsx.org"
   ],
+  "configurationDefaults": {
+    "workbench.colorTheme": "Wintermute Dark",
+    "editor.fontFamily": "'JetBrains Mono', 'Fira Code', Consolas, 'Courier New', monospace",
+    "editor.fontLigatures": true
+  },
   "win32MutexName": "wntrmte",
   "win32DirName": "Wintermute",
   "win32NameVersion": "Wintermute",

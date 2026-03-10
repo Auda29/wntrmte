@@ -234,14 +234,13 @@ Eigene Icons in `icons/` erstellen → `prepare_vscode.sh` kopiert sie in `resou
 
 ---
 
-## Phase 4: Source-Level Polish (optional, später)
+## Phase 4: Source-Level Polish
 
-Nur wenn Phase 1-3 stabil laufen:
-
-- **Title Bar Höhe reduzieren** — `titlebarPart.ts`: 30px → 28px (Patch)
-- **Sidebar Header entfernen** — CSS-Patch: `.part.sidebar > .title { display: none; }`
-- **Workflow in VS Code Core** — `src/vs/workbench/contrib/wntrmteWorkflow/` (additive Dateien, kein Conflict-Risiko)
-- **Custom Font** — Eigene Monospace-Schrift als Default
+- **Hidden Secondary Sidebar by default** — `ui-defaults.patch` setzt den 1.110.0-Default für die Secondary Sidebar auf hidden, damit die leere Auxiliary Bar nicht sichtbar ist.
+- **Custom Wintermute Theme** — Built-in Extension `extensions/wntrmte-theme/` liefert `Wintermute Dark` als Default-Theme mit kalten Blau-/Cyan-Tönen.
+- **Theme + Font Defaults** — `product.json` setzt `Wintermute Dark`, JetBrains Mono/Fira Code/Consolas-Fallback und Ligatures per `configurationDefaults`.
+- **Compact Window Chrome** — `ui-defaults.patch` reduziert Custom Title Bar und Sidebar-/Panel-Header von 35px/30px auf 28px.
+- **Build Integration** — `prepare_vscode.sh` bundelt die Theme-Extension ohne Compile-Schritt zusammen mit `wntrmte-workflow`.
 
 ---
 
@@ -300,8 +299,9 @@ bash build.sh                        # Full Build
 - [x] `ApprovalGate` — Allow/Allow All/Deny Dialoge im Editor
 - [x] Build-Integration: Extension wird als Built-in gebundlet (`prepare_vscode.sh` Zeilen 63-71)
 
-### Phase 4: Source-Level Polish — TODO
-- [ ] Title Bar Höhe reduzieren
-- [ ] Sidebar Header entfernen
-- [ ] Workflow in VS Code Core verschieben
-- [ ] Custom Font
+### Phase 4: Source-Level Polish — Done
+- [x] Secondary Sidebar / Auxiliary Bar per Default hidden
+- [x] Built-in Theme `extensions/wntrmte-theme/` mit `Wintermute Dark`
+- [x] `product.json` configuration defaults für Theme + Editor-Font
+- [x] Title Bar Höhe auf 28px reduziert
+- [x] Sidebar-/Panel-Header auf 28px reduziert

@@ -36,7 +36,7 @@ if [[ -d "../icons" ]]; then
     cp ../icons/wntrmte_512x512.png resources/linux/rpm/code.png 2>/dev/null || true
   fi
 
-  # macOS — generate .icns via iconutil if available, or use pre-built
+  # macOS â€” generate .icns via iconutil if available, or use pre-built
   if [[ -f "../icons/wntrmte.icns" ]]; then
     cp ../icons/wntrmte.icns resources/darwin/code.icns
   elif command -v iconutil &>/dev/null && [[ -f "../icons/wntrmte_1024x1024.png" ]]; then
@@ -68,6 +68,16 @@ if [[ -d "../extensions/wntrmte-workflow" ]]; then
   mkdir -p extensions/wntrmte-workflow
   cp    ../extensions/wntrmte-workflow/package.json extensions/wntrmte-workflow/
   cp -r ../extensions/wntrmte-workflow/out          extensions/wntrmte-workflow/out
+fi
+
+# --- Bundle wntrmte-theme extension ---
+if [[ -d "../extensions/wntrmte-theme" ]]; then
+  echo "=== Bundling wntrmte-theme extension ==="
+  rm -rf extensions/wntrmte-theme
+  mkdir -p extensions/wntrmte-theme
+  cp    ../extensions/wntrmte-theme/package.json     extensions/wntrmte-theme/
+  cp    ../extensions/wntrmte-theme/package.nls.json extensions/wntrmte-theme/
+  cp -r ../extensions/wntrmte-theme/themes           extensions/wntrmte-theme/themes
 fi
 
 # --- Apply patches ---
