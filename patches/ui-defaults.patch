@@ -1,5 +1,5 @@
 diff --git a/src/vs/workbench/browser/workbench.contribution.ts b/src/vs/workbench/browser/workbench.contribution.ts
-index d09ab3f..a1b2c3d 100644
+index d09ab3f..b2c3d4e 100644
 --- a/src/vs/workbench/browser/workbench.contribution.ts
 +++ b/src/vs/workbench/browser/workbench.contribution.ts
 @@ -68,3 +68,3 @@ const registry = Registry.as<IConfigurationRegistry>(ConfigurationExtensions.Con
@@ -12,6 +12,11 @@ index d09ab3f..a1b2c3d 100644
 -				'default': 'default',
 +				'default': 'hidden',
  				'markdownDescription': localize({ comment: ['This is the description for a setting'], key: 'activityBarLocation' }, "Controls the location of the Activity Bar relative to the Primary and Secondary Side Bars."),
+@@ -730,3 +730,3 @@ const registry = Registry.as<IConfigurationRegistry>(ConfigurationExtensions.Con
+ 				'type': 'string',
+-				'default': 'visibleInWorkspace',
++				'default': 'hidden',
+ 				'description': localize('secondarySideBarDefaultVisibility', "Controls the default visibility of the secondary side bar in workspaces or empty windows that are opened for the first time. Can be overridden by the agent sessions startup editor setting."),
 @@ -831,3 +831,3 @@ const registry = Registry.as<IConfigurationRegistry>(ConfigurationExtensions.Con
  				type: 'boolean',
 -				default: true,
@@ -39,17 +44,17 @@ diff --git a/src/vs/platform/window/common/window.ts b/src/vs/platform/window/co
 index abcdef0..1234567 100644
 --- a/src/vs/platform/window/common/window.ts
 +++ b/src/vs/platform/window/common/window.ts
-@@ -120,3 +120,3 @@ export function getWindowControlsStyle(configurationService: IConfigurationServic
+@@ -118,4 +118,4 @@ export function getWindowControlsStyle(configurationService: IConfigurationServic
+ 	return WindowControlsStyle.NATIVE; // default to native on all OS
  }
  
 -export const DEFAULT_CUSTOM_TITLEBAR_HEIGHT = 35; // includes space for command center
 +export const DEFAULT_CUSTOM_TITLEBAR_HEIGHT = 28;
- 
 diff --git a/src/vs/workbench/browser/parts/titlebar/titlebarPart.ts b/src/vs/workbench/browser/parts/titlebar/titlebarPart.ts
 index abcdef0..1234567 100644
 --- a/src/vs/workbench/browser/parts/titlebar/titlebarPart.ts
 +++ b/src/vs/workbench/browser/parts/titlebar/titlebarPart.ts
-@@ -129,3 +129,3 @@ export class BrowserTitlebarPart extends Part implements ITitlebarPart {
+@@ -129,4 +129,4 @@ export class BrowserTitlebarPart extends Part implements ITitlebarPart {
  	get minimumHeight(): number {
  		const wcoEnabled = isWeb && isWCOEnabled();
 -		let value = this.isCommandCenterVisible || wcoEnabled ? DEFAULT_CUSTOM_TITLEBAR_HEIGHT : 30;
@@ -59,7 +64,7 @@ diff --git a/src/vs/workbench/browser/part.ts b/src/vs/workbench/browser/part.ts
 index abcdef0..1234567 100644
 --- a/src/vs/workbench/browser/part.ts
 +++ b/src/vs/workbench/browser/part.ts
-@@ -110,6 +110,6 @@ class PartLayout {
+@@ -110,5 +110,5 @@ class PartLayout {
 -	private static readonly HEADER_HEIGHT = 35;
 -	private static readonly TITLE_HEIGHT = 35;
 +	private static readonly HEADER_HEIGHT = 28;
@@ -71,24 +76,15 @@ diff --git a/src/vs/workbench/browser/parts/media/paneCompositePart.css b/src/vs
 index abcdef0..1234567 100644
 --- a/src/vs/workbench/browser/parts/media/paneCompositePart.css
 +++ b/src/vs/workbench/browser/parts/media/paneCompositePart.css
-@@ -15,3 +15,3 @@
+@@ -15,4 +15,4 @@
  .monaco-workbench .pane-composite-part > .title > .composite-bar-container > .composite-bar > .monaco-action-bar,
  .monaco-workbench .pane-composite-part > .header-or-footer > .composite-bar-container > .composite-bar > .monaco-action-bar {
 -	line-height: 27px; /* matches panel titles in settings */
 +	line-height: 22px; /* matches compact Wintermute headers */
  }
-@@ -21,3 +21,3 @@
+@@ -21,4 +21,4 @@
  .monaco-workbench .pane-composite-part > .title > .composite-bar-container >.composite-bar > .monaco-action-bar .action-item.icon,
  .monaco-workbench .pane-composite-part > .header-or-footer > .composite-bar-container >.composite-bar > .monaco-action-bar .action-item.icon {
 -	height: 35px; /* matches height of composite container */
 +	height: 28px; /* matches compact composite container */
  	padding: 0 3px;
-diff --git a/src/vs/workbench/browser/workbench.contribution.ts b/src/vs/workbench/browser/workbench.contribution.ts
-index a1b2c3d..b2c3d4e 100644
---- a/src/vs/workbench/browser/workbench.contribution.ts
-+++ b/src/vs/workbench/browser/workbench.contribution.ts
-@@ -710,3 +710,3 @@ const registry = Registry.as<IConfigurationRegistry>(ConfigurationExtensions.Con
- 			'type': 'string',
--			'default': 'visibleInWorkspace',
-+			'default': 'hidden',
- 			'description': localize('secondarySideBarDefaultVisibility', "Controls the default visibility of the secondary side bar in workspaces or empty windows that are opened for the first time. Can be overridden by the agent sessions startup editor setting."),
