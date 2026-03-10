@@ -120,7 +120,7 @@ bash build.sh
 - [x] Phase 1: Build pipeline (clone → patch → compile → binary)
 - [x] Phase 2: Branding + minimalist UI defaults
 - [x] Phase 3: Patchbay client extension (offline + connected + AgentRunner)
-- [ ] Phase 4: Source-level polish
+- [x] Phase 4: Source-level polish (custom theme, compact chrome, font defaults)
 
 ## Companion: Patchbay
 
