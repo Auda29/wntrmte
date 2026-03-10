@@ -222,7 +222,7 @@ Eigene Icons in `icons/` erstellen → `prepare_vscode.sh` kopiert sie in `resou
 ### Abhängigkeit zu Patchbay:
 - **Schema:** Extension nutzt das `.project-agents/`-Format, definiert in `patchbay/schema/`
 - **Kein harter Backend-Zwang:** Offline-Modus funktioniert ohne Patchbay-Backend
-- **Später:** Shared Types via `patchbay-schema` npm-Package (siehe `VISION.md`)
+- **Schema-Owner ist Patchbay** — wntrmte implementiert eigene kompatible Interfaces, keine harte Code-Dependency
 
 ### Verifikation:
 1. Workspace mit `.project-agents/`-Ordner öffnen → Tasks erscheinen im Tree View
@@ -242,7 +242,6 @@ Nur wenn Phase 1-3 stabil laufen:
 - **Sidebar Header entfernen** — CSS-Patch: `.part.sidebar > .title { display: none; }`
 - **Workflow in VS Code Core** — `src/vs/workbench/contrib/wntrmteWorkflow/` (additive Dateien, kein Conflict-Risiko)
 - **Custom Font** — Eigene Monospace-Schrift als Default
-- **patchbay-schema Package** — Shared Types via `file:../patchbay-schema` referenzieren, statt Schema inline in der Extension zu halten
 
 ---
 
@@ -306,4 +305,3 @@ bash build.sh                        # Full Build
 - [ ] Sidebar Header entfernen
 - [ ] Workflow in VS Code Core verschieben
 - [ ] Custom Font
-- [ ] patchbay-schema als Shared Package extrahieren
