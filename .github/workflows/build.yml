@@ -63,6 +63,8 @@ jobs:
 
       - name: Build
         shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: bash build.sh
 
       - name: Upload artifact
