@@ -256,33 +256,42 @@ Eigene Icons in `icons/` erstellen → `prepare_vscode.sh` kopiert sie in `resou
 
 ### MVP (empfohlene erste Umsetzung)
 
-1. **Auto-Open beim Start**
+1. **Auto-Open beim Start** ✅
    - Neues Setting: `wntrmte.workflow.openDashboardOnStartup` (Default: `true`)
    - Öffnet das Panel automatisch beim Aktivieren der Extension
-   - Nur in Workspaces mit `.project-agents/` oder explizitem Patchbay-Bezug
+   - Aktuell in Workspaces mit `.project-agents/`
 
-2. **DashboardPanel zu echter Startfläche ausbauen**
+2. **DashboardPanel zu echter Startfläche ausbauen** ✅
    - `DashboardPanel.ts` bekommt State-Logik statt reinem `iframe`
    - Webview kann zwischen Setup-State und Connected-State umschalten
    - Panel öffnet bevorzugt in der rechten Editor-Spalte
 
-3. **Setup-Status sichtbar machen**
+3. **Setup-Status sichtbar machen** ✅
    - Prüfen: Dashboard erreichbar?
    - Prüfen: `patchbay --version` erfolgreich?
    - Prüfen: `.project-agents/` vorhanden?
    - Anzeigen: aktueller Mode (`auto` / `offline` / `connected`)
    - Anzeigen: aktueller `defaultRunner`
 
-4. **Direkte Setup-Aktionen im Panel**
+4. **Direkte Setup-Aktionen im Panel** ✅
    - `Check Patchbay CLI`
    - `Show Patchbay CLI install command`
-   - `Open Patchbay Dashboard`
+   - `Open Patchbay Dashboard` / `Open in Browser`
    - `Switch Mode`
    - `Set Default Runner`
 
-5. **Iframe nur wenn sinnvoll**
+5. **Iframe nur wenn sinnvoll** ✅
    - Bei erreichbarem Dashboard: `iframe` laden
    - Bei nicht erreichbarem Dashboard: Setup-Ansicht statt kaputter Fallback-Seite
+
+### Aktueller Stand
+
+- MVP ist in der Extension implementiert
+- `DashboardPanel` ist jetzt eine zustandsfähige Webview mit Setup-State und Connected-State
+- Ein lokaler `SetupInspector` bündelt CLI-, Dashboard- und Workspace-Prüfungen
+- Das Panel aktualisiert sich bei relevanten Konfigurationsänderungen
+- `defaultRunner` und `mode` lassen sich direkt aus dem Panel heraus ändern
+- Der Compile-/Smoke-Check der Extension konnte in der aktuellen lokalen Umgebung noch nicht sauber abgeschlossen werden, weil `npm`/`node` hier an einer WSL-/Node-Konfiguration scheitert
 
 ### Erweiterung nach MVP
 
@@ -321,9 +330,10 @@ Eigene Icons in `icons/` erstellen → `prepare_vscode.sh` kopiert sie in `resou
 4. Commands ergänzen:
    - `wntrmte.checkPatchbayCli`
    - `wntrmte.showPatchbayCliInstall`
-   - `wntrmte.setupWorkspace`
+   - `wntrmte.openPatchbayDashboardExternal`
    - `wntrmte.setDefaultRunner`
    - `wntrmte.refreshDashboardPanel`
+   - optional später `wntrmte.setupWorkspace`
 
 5. Konfiguration erweitern:
    - `wntrmte.workflow.openDashboardOnStartup`
@@ -407,11 +417,12 @@ bash build.sh                        # Full Build
 
 > **Hinweis:** Wenn in anderen Dokumenten von „all core features implemented“ die Rede ist, bezieht sich das auf Phasen 1–4. Phase 5 ist bewusst als zusätzliches UX-/Onboarding-Polish geplant und nicht Teil des Kern-Scopes.
 
-### Phase 5: Patchbay Start Panel — Planned
-- [ ] Auto-Open Patchbay-Panel beim Start (`openDashboardOnStartup`)
-- [ ] DashboardPanel von `iframe`-Wrapper zu zustandsfähiger Webview umbauen
-- [ ] Setup-State für CLI, Dashboard und Workspace-Status
-- [ ] Panel-Aktionen: CLI prüfen, Install-Hinweis, Dashboard öffnen, Mode wechseln, Default Runner setzen
-- [ ] Embedded Dashboard nur bei erreichbarem Backend anzeigen
+### Phase 5: Patchbay Start Panel — In Progress
+- [x] Auto-Open Patchbay-Panel beim Start (`openDashboardOnStartup`)
+- [x] DashboardPanel von `iframe`-Wrapper zu zustandsfähiger Webview umbauen
+- [x] Setup-State für CLI, Dashboard und Workspace-Status
+- [x] Panel-Aktionen: CLI prüfen, Install-Hinweis, Dashboard öffnen, Mode wechseln, Default Runner setzen
+- [x] Embedded Dashboard nur bei erreichbarem Backend anzeigen
+- [ ] Compile-/Smoke-Check der Extension in funktionierender Node-Umgebung nachziehen
 - [ ] Workspace-Setup-Flow für `.project-agents/` evaluieren
 - [ ] Runner-/Provider-Konfiguration sinnvoll zwischen wntrmte und Patchbay aufteilen

@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { PatchbayStore } from './PatchbayStore';
 import { FileStore } from './FileStore';
 import { ApiStore } from './ApiStore';
+import { probeDashboard } from '../services/SetupInspector';
 
 export type StoreMode = 'auto' | 'offline' | 'connected';
 
@@ -27,21 +28,9 @@ export async function createStore(
   }
 
   // auto: probe dashboard
-  const reachable = await probe(dashboardUrl);
-  if (reachable) {
+  const dashboard = await probeDashboard(dashboardUrl);
+  if (dashboard.reachable) {
     return { store: new ApiStore(dashboardUrl), mode: 'connected' };
   }
   return { store: new FileStore(workspaceRoot, agentsDirName), mode: 'offline' };
-}
-
-async function probe(url: string): Promise<boolean> {
-  try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 2000);
-    const res = await fetch(`${url}/api/state`, { signal: controller.signal });
-    clearTimeout(timeout);
-    return res.ok;
-  } catch {
-    return false;
-  }
 }
