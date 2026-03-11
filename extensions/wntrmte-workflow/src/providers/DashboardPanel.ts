@@ -3,14 +3,15 @@ import { SetupStatus } from '../services/SetupInspector';
 
 export class DashboardPanel {
   private _panel: vscode.WebviewPanel | undefined;
+  private _lastTitle = '';
+  private _lastHtml = '';
 
   constructor() {}
 
   show(status: SetupStatus, column: vscode.ViewColumn = vscode.ViewColumn.Beside): void {
     const panel = this.ensurePanel(column);
     panel.reveal(column, true);
-    panel.title = getPanelTitle(status);
-    panel.webview.html = getHtml(panel.webview, status);
+    this.applyRender(panel, status);
   }
 
   update(status: SetupStatus): void {
@@ -18,8 +19,7 @@ export class DashboardPanel {
       return;
     }
 
-    this._panel.title = getPanelTitle(status);
-    this._panel.webview.html = getHtml(this._panel.webview, status);
+    this.applyRender(this._panel, status);
   }
 
   isOpen(): boolean {
@@ -29,6 +29,8 @@ export class DashboardPanel {
   hide(): void {
     this._panel?.dispose();
     this._panel = undefined;
+    this._lastTitle = '';
+    this._lastHtml = '';
   }
 
   toggle(status: SetupStatus, column: vscode.ViewColumn = vscode.ViewColumn.Beside): void {
@@ -43,6 +45,23 @@ export class DashboardPanel {
   dispose(): void {
     this._panel?.dispose();
     this._panel = undefined;
+    this._lastTitle = '';
+    this._lastHtml = '';
+  }
+
+  private applyRender(panel: vscode.WebviewPanel, status: SetupStatus): void {
+    const title = getPanelTitle(status);
+    const html = getHtml(panel.webview, status);
+
+    if (title !== this._lastTitle) {
+      panel.title = title;
+      this._lastTitle = title;
+    }
+
+    if (html !== this._lastHtml) {
+      panel.webview.html = html;
+      this._lastHtml = html;
+    }
   }
 
   private ensurePanel(column: vscode.ViewColumn): vscode.WebviewPanel {
@@ -72,6 +91,8 @@ export class DashboardPanel {
 
     panel.onDidDispose(() => {
       this._panel = undefined;
+      this._lastTitle = '';
+      this._lastHtml = '';
     });
 
     this._panel = panel;
