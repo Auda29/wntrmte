@@ -48,7 +48,7 @@
       },
       {
         "command": "wntrmte.dispatch",
-        "title": "Dispatch Task to Agent",
+        "title": "Dispatch Task to Runner",
         "icon": "$(play)",
         "category": "Wintermute"
       },
@@ -97,6 +97,12 @@
           "enum": ["auto", "offline", "connected"],
           "default": "auto",
           "description": "Connection mode. 'auto' probes the dashboard URL on activation."
+        },
+        "wntrmte.workflow.defaultRunner": {
+          "type": "string",
+          "enum": ["claude-code", "codex", "gemini", "cursor-cli", "bash"],
+          "default": "claude-code",
+          "description": "Default Patchbay runner for task dispatch."
         }
       }
     }

@@ -1,18 +1,27 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
+import { exec } from 'child_process';
+import { promisify } from 'util';
 import { createStore } from './store/StoreFactory';
-import { PatchbayStore } from './store/PatchbayStore';
 import { TaskTreeProvider } from './providers/TaskTreeProvider';
 import { RunLogProvider } from './providers/RunLogProvider';
 import { WorkflowStatusBar } from './providers/StatusBarItem';
 import { DashboardPanel } from './providers/DashboardPanel';
 import { TaskStatus, Run } from './store/types';
-import { AgentRunner } from './agent/AgentRunner';
-import { ToolRegistry, createBuiltinTools } from './agent/ToolRegistry';
-import { ApprovalGate } from './agent/ApprovalGate';
+import { PatchbayRunner } from './agent/PatchbayRunner';
+
+const execAsync = promisify(exec);
 
 const ALL_STATUSES: TaskStatus[] = ['open', 'in_progress', 'blocked', 'review', 'done'];
+
+const AVAILABLE_RUNNERS = [
+  { label: 'claude-code', description: 'Claude Code CLI' },
+  { label: 'codex', description: 'OpenAI Codex CLI' },
+  { label: 'gemini', description: 'Google Gemini CLI' },
+  { label: 'cursor-cli', description: 'Cursor CLI' },
+  { label: 'bash', description: 'Shell command runner' },
+];
 
 export function activate(ctx: vscode.ExtensionContext): void {
   const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
@@ -43,19 +52,13 @@ async function bootstrapAsync(
 
   const treeProvider = new TaskTreeProvider(store);
   const statusBar = new WorkflowStatusBar(store);
-
-  // AgentRunner setup (only if vscode.lm is available)
-  let agentRunner: AgentRunner | undefined;
-  if (typeof vscode.lm !== 'undefined') {
-    const tools = new ToolRegistry();
-    createBuiltinTools(workspaceRoot).forEach(t => tools.register(t));
-    const gate = new ApprovalGate();
-    agentRunner = new AgentRunner(store, tools, gate);
-  }
+  const patchbayRunner = new PatchbayRunner();
+  const outputChannel = vscode.window.createOutputChannel('Patchbay');
 
   ctx.subscriptions.push(
     store,
     statusBar,
+    outputChannel,
 
     vscode.window.registerTreeDataProvider('wntrmte.taskTree', treeProvider),
 
@@ -97,13 +100,17 @@ async function bootstrapAsync(
     }),
 
     vscode.commands.registerCommand('wntrmte.dispatch', async () => {
-      if (!agentRunner) {
-        void vscode.window.showWarningMessage(
-          'AgentRunner unavailable — vscode.lm API not found. Ensure a Language Model extension is installed.'
+      // Check if patchbay CLI is installed
+      try {
+        await execAsync('patchbay --version');
+      } catch {
+        void vscode.window.showErrorMessage(
+          'patchbay CLI not found. Install via: npm install -g @patchbay/cli'
         );
         return;
       }
 
+      // Pick a task
       const tasks = await store.getTasks();
       const actionable = tasks.filter(t => t.status === 'open' || t.status === 'in_progress');
       if (actionable.length === 0) {
@@ -111,20 +118,57 @@ async function bootstrapAsync(
         return;
       }
 
-      const pick = await vscode.window.showQuickPick(
+      const taskPick = await vscode.window.showQuickPick(
         actionable.map(t => ({ label: t.id, description: t.title, task: t })),
         { title: 'Select task to dispatch' }
       );
-      if (!pick) { return; }
+      if (!taskPick) { return; }
 
+      // Pick a runner
+      const defaultRunner = vscode.workspace
+        .getConfiguration('wntrmte.workflow')
+        .get<string>('defaultRunner', 'claude-code');
+
+      const sorted = [
+        ...AVAILABLE_RUNNERS.filter(r => r.label === defaultRunner),
+        ...AVAILABLE_RUNNERS.filter(r => r.label !== defaultRunner),
+      ];
+
+      const runnerPick = await vscode.window.showQuickPick(sorted, {
+        title: 'Select runner',
+      });
+      if (!runnerPick) { return; }
+
+      // Execute via patchbay CLI
       await vscode.window.withProgress(
-        { location: vscode.ProgressLocation.Notification, title: `Running agent on ${pick.label}`, cancellable: true },
+        {
+          location: vscode.ProgressLocation.Notification,
+          title: `Running ${runnerPick.label} on ${taskPick.label}`,
+          cancellable: true,
+        },
         async (_progress, token) => {
-          try {
-            await agentRunner!.run(pick.task, token);
-            void vscode.window.showInformationMessage(`Agent completed task ${pick.label}.`);
-          } catch (err) {
-            void vscode.window.showErrorMessage(`Agent failed: ${String(err)}`);
+          const result = await patchbayRunner.run(
+            taskPick.label,
+            runnerPick.label,
+            workspaceRoot,
+            outputChannel,
+            token
+          );
+
+          treeProvider.refresh();
+
+          if (result === 'completed') {
+            void vscode.window.showInformationMessage(
+              `Runner '${runnerPick.label}' completed task ${taskPick.label}.`
+            );
+          } else if (result === 'cancelled') {
+            void vscode.window.showWarningMessage(
+              `Runner '${runnerPick.label}' was cancelled.`
+            );
+          } else {
+            void vscode.window.showErrorMessage(
+              `Runner '${runnerPick.label}' failed. See Output > Patchbay for details.`
+            );
           }
         }
       );
