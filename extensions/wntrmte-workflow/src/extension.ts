@@ -2,6 +2,8 @@ import * as vscode from 'vscode';
 import * as fsSync from 'fs';
 import * as fs from 'fs/promises';
 import * as path from 'path';
+import { execFile } from 'child_process';
+import { promisify } from 'util';
 import { createStore } from './store/StoreFactory';
 import { PatchbayStore } from './store/PatchbayStore';
 import { TaskTreeProvider } from './providers/TaskTreeProvider';
@@ -22,12 +24,22 @@ import {
 } from './services/SetupInspector';
 
 const ALL_STATUSES: TaskStatus[] = ['open', 'in_progress', 'blocked', 'review', 'done'];
+const execFileAsync = promisify(execFile);
 
 interface CliInstallPlan {
   label: string;
   detail: string;
   terminalName: string;
   terminalCwd?: string;
+  commands: string[];
+}
+
+interface TerminalPlan {
+  label: string;
+  detail: string;
+  terminalName: string;
+  terminalCwd?: string;
+  env?: Record<string, string>;
   commands: string[];
 }
 
@@ -93,16 +105,70 @@ function getPatchbayCliInstallPlan(workspaceRoot: string | undefined, extensionR
   };
 }
 
-async function runCliInstallPlan(plan: CliInstallPlan): Promise<void> {
+function runTerminalPlan(plan: CliInstallPlan | TerminalPlan): void {
   const terminal = vscode.window.createTerminal({
     name: plan.terminalName,
     cwd: plan.terminalCwd,
+    env: 'env' in plan ? plan.env : undefined,
   });
   terminal.show(true);
 
   for (const command of plan.commands) {
     terminal.sendText(command, true);
   }
+}
+
+function getDashboardStartPlan(
+  workspaceRoot: string | undefined,
+  dashboardUrl: string,
+  extensionRoot: string,
+): TerminalPlan | undefined {
+  if (!workspaceRoot) {
+    return undefined;
+  }
+
+  let parsed: URL;
+  try {
+    parsed = new URL(dashboardUrl);
+  } catch {
+    return undefined;
+  }
+
+  const port = parsed.port || (parsed.protocol === 'https:' ? '443' : '80');
+  if (port === '3001') {
+    return {
+      label: 'Start Patchbay server',
+      detail: `${parsed.origin} via patchbay serve`,
+      terminalName: 'Patchbay Server',
+      terminalCwd: workspaceRoot,
+      commands: [
+        `patchbay serve --host "${parsed.hostname}" --port ${port} --repo-root "${workspaceRoot}"`,
+      ],
+    };
+  }
+
+  const localRepo = findLocalPatchbayRepo(workspaceRoot, extensionRoot);
+  if (!localRepo) {
+    return undefined;
+  }
+
+  return {
+    label: 'Start Patchbay dashboard',
+    detail: `${parsed.origin} via Next.js dev server`,
+    terminalName: 'Patchbay Dashboard',
+    terminalCwd: path.join(localRepo, 'packages', 'dashboard'),
+    env: {
+      PATCHBAY_REPO_ROOT: workspaceRoot,
+    },
+    commands: ['npm run dev'],
+  };
+}
+
+async function runPatchbayCommand(
+  workspaceRoot: string,
+  args: string[],
+): Promise<{ stdout: string; stderr: string }> {
+  return execFileAsync('patchbay', args, { cwd: workspaceRoot });
 }
 
 export function activate(ctx: vscode.ExtensionContext): void {
@@ -289,6 +355,31 @@ export function activate(ctx: vscode.ExtensionContext): void {
 
     vscode.commands.registerCommand('wntrmte.openPatchbayDashboardExternal', async () => {
       const setupStatus = latestSetupStatus ?? await refreshPanel(false);
+      if (!setupStatus.dashboard.reachable) {
+        const startPlan = getDashboardStartPlan(
+          setupStatus.workspaceRoot,
+          setupStatus.dashboard.url,
+          ctx.extensionUri.fsPath,
+        );
+        const dashboardActions = startPlan
+          ? ['Start Dashboard', 'Open Anyway']
+          : ['Open Anyway'];
+
+        const action = await vscode.window.showWarningMessage(
+          `Patchbay dashboard is not reachable at ${setupStatus.dashboard.url}.`,
+          ...dashboardActions
+        );
+
+        if (action === 'Start Dashboard' && startPlan) {
+          runTerminalPlan(startPlan);
+          return;
+        }
+
+        if (action !== 'Open Anyway') {
+          return;
+        }
+      }
+
       await vscode.env.openExternal(vscode.Uri.parse(setupStatus.dashboard.url));
     }),
 
@@ -323,7 +414,7 @@ export function activate(ctx: vscode.ExtensionContext): void {
       );
 
       if (action === 'Run in Terminal') {
-        await runCliInstallPlan(installPlan);
+        runTerminalPlan(installPlan);
       }
     }),
 
@@ -376,12 +467,43 @@ export function activate(ctx: vscode.ExtensionContext): void {
       );
       if (!pick) { return; }
 
-      const terminal = vscode.window.createTerminal({
-        name: 'Patchbay Auth',
-        cwd: setupStatus.workspaceRoot,
-      });
-      terminal.show();
-      terminal.sendText(`patchbay auth set ${pick.label}`, true);
+      const authMode = await vscode.window.showQuickPick(
+        [
+          {
+            label: 'Subscription',
+            description: 'Use existing CLI login / subscription mode',
+            args: ['auth', 'set', pick.label, '--subscription'],
+          },
+          {
+            label: 'API Key',
+            description: 'Store an API key for this runner',
+            args: ['auth', 'set', pick.label, '--api-key'],
+          },
+        ],
+        { title: `Select auth mode for ${pick.label}` }
+      );
+      if (!authMode || !setupStatus.workspaceRoot) { return; }
+
+      try {
+        if (authMode.label === 'Subscription') {
+          await runPatchbayCommand(setupStatus.workspaceRoot, authMode.args);
+        } else {
+          const apiKey = await vscode.window.showInputBox({
+            title: `API key for ${pick.label}`,
+            prompt: 'Enter the API key that Patchbay should store for this runner',
+            password: true,
+            ignoreFocusOut: true,
+          });
+          if (!apiKey) { return; }
+
+          await runPatchbayCommand(setupStatus.workspaceRoot, [...authMode.args, apiKey]);
+        }
+
+        await refreshPanel(dashboardPanel.isOpen());
+        void vscode.window.showInformationMessage(`Configured ${authMode.label.toLowerCase()} auth for ${pick.label}.`);
+      } catch (error) {
+        void vscode.window.showErrorMessage(`Failed to configure auth for ${pick.label}: ${String(error)}`);
+      }
     }),
 
     vscode.commands.registerCommand('wntrmte.setupWorkspace', async () => {
