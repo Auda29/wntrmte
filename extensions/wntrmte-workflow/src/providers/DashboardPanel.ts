@@ -75,10 +75,17 @@ function getHtml(webview: vscode.Webview, status: SetupStatus): string {
   const dashboardLabel = status.dashboard.reachable
     ? 'reachable'
     : status.dashboard.error ?? 'unreachable';
-  const workspaceLabel = status.workspaceReady
-    ? `${status.agentsDirName} found`
-    : `${status.agentsDirName} missing`;
-  const connected = status.dashboard.reachable;
+  const workspaceLabel = !status.hasWorkspace
+    ? 'no workspace open'
+    : status.workspaceReady
+      ? `${status.agentsDirName} found`
+      : `${status.agentsDirName} missing`;
+  const connected = status.hasWorkspace && status.workspaceReady && status.dashboard.reachable;
+  const primaryWorkspaceAction = !status.hasWorkspace
+    ? `<button data-command="vscode.openFolder">Open Workspace Folder</button>`
+    : !status.workspaceReady
+      ? `<button data-command="wntrmte.setupWorkspace">Initialize Patchbay Workspace</button>`
+      : `<button data-command="wntrmte.refreshDashboardPanel">Refresh</button>`;
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -244,7 +251,8 @@ function getHtml(webview: vscode.Webview, status: SetupStatus): string {
         <span class="badge">Runner ${escapeHtml(status.defaultRunner)}</span>
       </div>
       <div class="actions">
-        <button data-command="wntrmte.refreshDashboardPanel">Refresh</button>
+        ${primaryWorkspaceAction}
+        <button class="secondary" data-command="wntrmte.refreshDashboardPanel">Refresh</button>
         <button class="secondary" data-command="wntrmte.openPatchbayDashboardExternal">Open in Browser</button>
         <button class="secondary" data-command="wntrmte.checkPatchbayCli">Check Patchbay CLI</button>
         <button class="secondary" data-command="wntrmte.showPatchbayCliInstall">CLI Install</button>
@@ -260,12 +268,16 @@ function getHtml(webview: vscode.Webview, status: SetupStatus): string {
       <iframe src="${dashboardUrl}" title="Patchbay Dashboard"></iframe>
       ` : `
       <div class="hero">
-        Wintermute found a Patchbay workspace, but the embedded dashboard is not reachable yet. The local setup below makes the missing piece explicit instead of showing a broken iframe.
+        ${status.hasWorkspace
+          ? 'Wintermute found a workspace, but the embedded dashboard is not reachable yet. The local setup below makes the missing piece explicit instead of showing a broken iframe.'
+          : 'Open a folder to work on a project, or start by creating a Patchbay-ready workspace. Wintermute keeps the setup actions here so the editor does not drop you into an empty start screen.'}
       </div>
       <div class="setup">
         <div class="card">
           <h2>Workspace</h2>
-          <p>${status.workspaceReady
+          <p>${!status.hasWorkspace
+            ? 'No workspace is currently open. Open a project folder first, then initialize Patchbay metadata for that folder.'
+            : status.workspaceReady
             ? `The workspace contains <code>${escapeHtml(status.agentsDirName)}</code> and can use the local file-backed store.`
             : `The workspace is missing <code>${escapeHtml(status.agentsDirName)}</code>, so Patchbay features stay in setup mode.`}</p>
         </div>
@@ -308,6 +320,10 @@ function renderBadge(ok: boolean, label: string): string {
 }
 
 function getPanelTitle(status: SetupStatus): string {
+  if (!status.hasWorkspace) {
+    return 'Patchbay Start';
+  }
+
   return status.dashboard.reachable ? 'Patchbay Dashboard' : 'Patchbay Setup';
 }
 

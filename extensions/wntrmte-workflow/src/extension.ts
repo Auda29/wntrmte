@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
+import * as fs from 'fs/promises';
 import * as path from 'path';
-import * as fs from 'fs';
 import { createStore } from './store/StoreFactory';
 import { PatchbayStore } from './store/PatchbayStore';
 import { TaskTreeProvider } from './providers/TaskTreeProvider';
@@ -10,28 +10,21 @@ import { DashboardPanel } from './providers/DashboardPanel';
 import { TaskStatus, Run } from './store/types';
 import { PatchbayRunner } from './agent/PatchbayRunner';
 import { AVAILABLE_RUNNERS } from './services/constants';
-import { SetupInspector, checkPatchbayCli, SetupStatus } from './services/SetupInspector';
+import {
+  SetupInspector,
+  checkPatchbayCli,
+  SetupStatus,
+  getWorkspaceContext,
+  createPatchbayWorkspace,
+  WorkspaceContext,
+} from './services/SetupInspector';
 
 const ALL_STATUSES: TaskStatus[] = ['open', 'in_progress', 'blocked', 'review', 'done'];
 
 export function activate(ctx: vscode.ExtensionContext): void {
-  const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
-  if (!workspaceRoot) { return; }
-
-  const agentsDirName = vscode.workspace
-    .getConfiguration('wntrmte.workflow')
-    .get<string>('projectAgentsDir', '.project-agents');
-
-  const agentsDir = path.join(workspaceRoot, agentsDirName);
-  if (!fs.existsSync(agentsDir)) { return; }
-
-  // Signal to 'when' clauses that .project-agents exists
-  void vscode.commands.executeCommand('setContext', 'wntrmte.projectAgentsFound', true);
-
   const patchbayRunner = new PatchbayRunner();
   const outputChannel = vscode.window.createOutputChannel('Patchbay');
   const dashboardPanel = new DashboardPanel();
-  const inspector = new SetupInspector(workspaceRoot, agentsDirName);
 
   let store: PatchbayStore | undefined;
   let treeProvider: TaskTreeProvider | undefined;
@@ -47,9 +40,26 @@ export function activate(ctx: vscode.ExtensionContext): void {
     treeProvider = undefined;
   };
 
+  const getAgentsDirName = (): string => vscode.workspace
+    .getConfiguration('wntrmte.workflow')
+    .get<string>('projectAgentsDir', '.project-agents');
+
+  const getContext = (): WorkspaceContext => getWorkspaceContext(getAgentsDirName());
+
+  const updateContexts = (context: WorkspaceContext, connected: boolean): void => {
+    void vscode.commands.executeCommand('setContext', 'wntrmte.workspaceOpen', context.hasWorkspace);
+    void vscode.commands.executeCommand('setContext', 'wntrmte.projectAgentsFound', context.workspaceReady);
+    void vscode.commands.executeCommand('setContext', 'wntrmte.connected', connected);
+  };
+
   const refreshPanel = async (show = false): Promise<SetupStatus> => {
+    const inspector = new SetupInspector(getContext());
     const status = await inspector.inspect();
     latestSetupStatus = status;
+    updateContexts(
+      getContext(),
+      status.hasWorkspace && status.workspaceReady && status.effectiveMode === 'connected'
+    );
 
     if (show) {
       dashboardPanel.show(status, vscode.ViewColumn.Beside);
@@ -63,11 +73,16 @@ export function activate(ctx: vscode.ExtensionContext): void {
   const initializeStore = async (): Promise<void> => {
     disposeBootstrap();
 
-    const storeResult = await createStore(workspaceRoot, agentsDirName);
+    const context = getContext();
+    updateContexts(context, false);
+
+    if (!context.workspaceReady || !context.workspaceRoot) {
+      await refreshPanel(dashboardPanel.isOpen());
+      return;
+    }
+
+    const storeResult = await createStore(context.workspaceRoot, context.agentsDirName);
     store = storeResult.store;
-
-    void vscode.commands.executeCommand('setContext', 'wntrmte.connected', storeResult.mode === 'connected');
-
     treeProvider = new TaskTreeProvider(store);
     const statusBar = new WorkflowStatusBar(store);
 
@@ -81,12 +96,31 @@ export function activate(ctx: vscode.ExtensionContext): void {
       ),
     ];
 
+    updateContexts(context, storeResult.mode === 'connected');
     await refreshPanel(dashboardPanel.isOpen());
+  };
+
+  const ensureWorkspaceRoot = async (): Promise<string | undefined> => {
+    const context = getContext();
+    if (context.workspaceRoot) {
+      return context.workspaceRoot;
+    }
+
+    const action = await vscode.window.showInformationMessage(
+      'Open a project folder to initialize a Patchbay workspace.',
+      'Open Folder'
+    );
+
+    if (action === 'Open Folder') {
+      await vscode.commands.executeCommand('vscode.openFolder');
+    }
+
+    return undefined;
   };
 
   const ensureStore = (): PatchbayStore | undefined => {
     if (!store) {
-      void vscode.window.showWarningMessage('Patchbay store is still starting up. Try again in a moment.');
+      void vscode.window.showWarningMessage('Patchbay is not ready yet. Open or initialize a Patchbay workspace first.');
       return undefined;
     }
 
@@ -96,13 +130,17 @@ export function activate(ctx: vscode.ExtensionContext): void {
   ctx.subscriptions.push(
     outputChannel,
     dashboardPanel,
+    { dispose: disposeBootstrap },
 
-    {
-      dispose: disposeBootstrap,
-    },
+    vscode.workspace.onDidChangeWorkspaceFolders(async () => {
+      await initializeStore();
+    }),
 
     vscode.workspace.onDidChangeConfiguration(async (event) => {
-      if (event.affectsConfiguration('wntrmte.workflow.mode')) {
+      if (
+        event.affectsConfiguration('wntrmte.workflow.mode') ||
+        event.affectsConfiguration('wntrmte.workflow.projectAgentsDir')
+      ) {
         await initializeStore();
         return;
       }
@@ -126,15 +164,18 @@ export function activate(ctx: vscode.ExtensionContext): void {
       if (!activeStore || !task) { return; }
 
       const pick = await vscode.window.showQuickPick(
-        ALL_STATUSES.map(s => ({ label: s, description: s === task.status ? '(current)' : undefined })),
+        ALL_STATUSES.map((status) => ({
+          label: status,
+          description: status === task.status ? '(current)' : undefined,
+        })),
         { title: `Set status for ${task.id}` }
       );
       if (!pick) { return; }
 
       try {
         await activeStore.updateTaskStatus(task.id, pick.label as TaskStatus);
-      } catch (err) {
-        void vscode.window.showErrorMessage(`Failed to update task: ${String(err)}`);
+      } catch (error) {
+        void vscode.window.showErrorMessage(`Failed to update task: ${String(error)}`);
       }
     }),
 
@@ -156,7 +197,8 @@ export function activate(ctx: vscode.ExtensionContext): void {
     }),
 
     vscode.commands.registerCommand('wntrmte.checkPatchbayCli', async () => {
-      const cli = await checkPatchbayCli(workspaceRoot);
+      const context = getContext();
+      const cli = await checkPatchbayCli(context.workspaceRoot);
       await refreshPanel(dashboardPanel.isOpen());
 
       if (cli.available) {
@@ -200,47 +242,80 @@ export function activate(ctx: vscode.ExtensionContext): void {
         .update('defaultRunner', pick.label, vscode.ConfigurationTarget.Workspace);
     }),
 
+    vscode.commands.registerCommand('wntrmte.setupWorkspace', async () => {
+      const workspaceRoot = await ensureWorkspaceRoot();
+      if (!workspaceRoot) { return; }
+
+      const agentsDirName = getAgentsDirName();
+      try {
+        await createPatchbayWorkspace(workspaceRoot, agentsDirName);
+
+        const projectName = path.basename(workspaceRoot);
+        const projectFile = path.join(workspaceRoot, agentsDirName, 'project.yml');
+        const initialTask = path.join(workspaceRoot, agentsDirName, 'tasks', 'task-001.md');
+
+        await fs.access(projectFile);
+        await fs.access(initialTask);
+
+        await initializeStore();
+
+        const action = await vscode.window.showInformationMessage(
+          `Initialized Patchbay workspace in ${projectName}.`,
+          'Open Project File',
+          'Open Initial Task'
+        );
+
+        if (action === 'Open Project File') {
+          const document = await vscode.workspace.openTextDocument(projectFile);
+          await vscode.window.showTextDocument(document);
+        } else if (action === 'Open Initial Task') {
+          const document = await vscode.workspace.openTextDocument(initialTask);
+          await vscode.window.showTextDocument(document);
+        }
+      } catch (error) {
+        void vscode.window.showErrorMessage(`Failed to initialize Patchbay workspace: ${String(error)}`);
+      }
+    }),
+
     vscode.commands.registerCommand('wntrmte.dispatch', async () => {
       const activeStore = ensureStore();
       if (!activeStore) { return; }
 
-      const cli = await checkPatchbayCli(workspaceRoot);
+      const context = getContext();
+      const cli = await checkPatchbayCli(context.workspaceRoot);
       if (!cli.available) {
-        void vscode.window.showErrorMessage(
-          'patchbay CLI not found. Install via: npm install -g @patchbay/cli'
-        );
+        void vscode.window.showErrorMessage('patchbay CLI not found. Install via: npm install -g @patchbay/cli');
         return;
       }
 
       const tasks = await activeStore.getTasks();
-      const actionable = tasks.filter(t => t.status === 'open' || t.status === 'blocked');
+      const actionable = tasks.filter((task) => task.status === 'open' || task.status === 'blocked');
       if (actionable.length === 0) {
         void vscode.window.showInformationMessage('No open tasks to dispatch.');
         return;
       }
 
       const taskPick = await vscode.window.showQuickPick(
-        actionable.map(t => ({ label: t.id, description: t.title, task: t })),
+        actionable.map((task) => ({ label: task.id, description: task.title, task })),
         { title: 'Select task to dispatch' }
       );
       if (!taskPick) { return; }
 
-      // Pick a runner
       const defaultRunner = vscode.workspace
         .getConfiguration('wntrmte.workflow')
         .get<string>('defaultRunner', 'claude-code');
 
       const sorted = [
-        ...AVAILABLE_RUNNERS.filter(r => r.label === defaultRunner),
-        ...AVAILABLE_RUNNERS.filter(r => r.label !== defaultRunner),
+        ...AVAILABLE_RUNNERS.filter((runner) => runner.label === defaultRunner),
+        ...AVAILABLE_RUNNERS.filter((runner) => runner.label !== defaultRunner),
       ];
 
       const runnerPick = await vscode.window.showQuickPick(sorted, {
         title: 'Select runner',
       });
-      if (!runnerPick) { return; }
+      const workspaceRoot = context.workspaceRoot;
+      if (!runnerPick || !workspaceRoot) { return; }
 
-      // Execute via patchbay CLI
       await vscode.window.withProgress(
         {
           location: vscode.ProgressLocation.Notification,
@@ -264,9 +339,7 @@ export function activate(ctx: vscode.ExtensionContext): void {
               `Runner '${runnerPick.label}' completed task ${taskPick.label}.`
             );
           } else if (result === 'cancelled') {
-            void vscode.window.showWarningMessage(
-              `Runner '${runnerPick.label}' was cancelled.`
-            );
+            void vscode.window.showWarningMessage(`Runner '${runnerPick.label}' was cancelled.`);
           } else {
             void vscode.window.showErrorMessage(
               `Runner '${runnerPick.label}' failed. See Output > Patchbay for details.`
@@ -282,6 +355,7 @@ export function activate(ctx: vscode.ExtensionContext): void {
         { title: 'Select connection mode' }
       );
       if (!pick) { return; }
+
       await vscode.workspace
         .getConfiguration('wntrmte.workflow')
         .update('mode', pick, vscode.ConfigurationTarget.Workspace);

@@ -10,6 +10,7 @@
   },
   "categories": ["Other"],
   "activationEvents": [
+    "onStartupFinished",
     "workspaceContains:.project-agents"
   ],
   "main": "./out/extension.js",
@@ -70,6 +71,11 @@
       {
         "command": "wntrmte.setDefaultRunner",
         "title": "Set Default Runner",
+        "category": "Wintermute"
+      },
+      {
+        "command": "wntrmte.setupWorkspace",
+        "title": "Initialize Patchbay Workspace",
         "category": "Wintermute"
       },
       {

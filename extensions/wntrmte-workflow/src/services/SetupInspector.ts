@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import * as fs from 'fs';
+import * as fsPromises from 'fs/promises';
 import * as path from 'path';
 import { exec } from 'child_process';
 import { promisify } from 'util';
@@ -8,6 +9,13 @@ import type { StoreMode } from '../store/StoreFactory';
 const execAsync = promisify(exec);
 
 export type EffectiveMode = 'offline' | 'connected';
+
+export interface WorkspaceContext {
+  hasWorkspace: boolean;
+  workspaceRoot?: string;
+  agentsDirName: string;
+  workspaceReady: boolean;
+}
 
 export interface CliStatus {
   available: boolean;
@@ -22,8 +30,9 @@ export interface DashboardStatus {
 }
 
 export interface SetupStatus {
+  hasWorkspace: boolean;
   workspaceReady: boolean;
-  workspaceRoot: string;
+  workspaceRoot?: string;
   agentsDirName: string;
   configuredMode: StoreMode;
   effectiveMode: EffectiveMode;
@@ -33,10 +42,7 @@ export interface SetupStatus {
 }
 
 export class SetupInspector {
-  constructor(
-    private readonly workspaceRoot: string,
-    private readonly agentsDirName: string
-  ) {}
+  constructor(private readonly context: WorkspaceContext) {}
 
   async inspect(): Promise<SetupStatus> {
     const config = vscode.workspace.getConfiguration('wntrmte.workflow');
@@ -45,14 +51,15 @@ export class SetupInspector {
     const dashboardUrl = config.get<string>('dashboardUrl', 'http://localhost:3000');
 
     const [cli, dashboard] = await Promise.all([
-      checkPatchbayCli(this.workspaceRoot),
+      checkPatchbayCli(this.context.workspaceRoot),
       probeDashboard(dashboardUrl),
     ]);
 
     return {
-      workspaceReady: hasProjectAgentsDir(this.workspaceRoot, this.agentsDirName),
-      workspaceRoot: this.workspaceRoot,
-      agentsDirName: this.agentsDirName,
+      hasWorkspace: this.context.hasWorkspace,
+      workspaceReady: this.context.workspaceReady,
+      workspaceRoot: this.context.workspaceRoot,
+      agentsDirName: this.context.agentsDirName,
       configuredMode,
       effectiveMode: resolveEffectiveMode(configuredMode, dashboard.reachable),
       defaultRunner,
@@ -62,13 +69,32 @@ export class SetupInspector {
   }
 }
 
+export function getWorkspaceContext(agentsDirName: string): WorkspaceContext {
+  const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+
+  if (!workspaceRoot) {
+    return {
+      hasWorkspace: false,
+      agentsDirName,
+      workspaceReady: false,
+    };
+  }
+
+  return {
+    hasWorkspace: true,
+    workspaceRoot,
+    agentsDirName,
+    workspaceReady: hasProjectAgentsDir(workspaceRoot, agentsDirName),
+  };
+}
+
 export function hasProjectAgentsDir(workspaceRoot: string, agentsDirName: string): boolean {
   return fs.existsSync(path.join(workspaceRoot, agentsDirName));
 }
 
-export async function checkPatchbayCli(cwd: string): Promise<CliStatus> {
+export async function checkPatchbayCli(cwd?: string): Promise<CliStatus> {
   try {
-    const { stdout, stderr } = await execAsync('patchbay --version', { cwd });
+    const { stdout, stderr } = await execAsync('patchbay --version', cwd ? { cwd } : undefined);
     const version = (stdout || stderr).trim();
     return {
       available: true,
@@ -107,6 +133,51 @@ export async function probeDashboard(url: string): Promise<DashboardStatus> {
       url,
       error: getErrorMessage(error),
     };
+  }
+}
+
+export async function createPatchbayWorkspace(workspaceRoot: string, agentsDirName: string): Promise<void> {
+  const agentsDir = path.join(workspaceRoot, agentsDirName);
+  const tasksDir = path.join(agentsDir, 'tasks');
+  const runsDir = path.join(agentsDir, 'runs');
+
+  await fsPromises.mkdir(tasksDir, { recursive: true });
+  await fsPromises.mkdir(runsDir, { recursive: true });
+
+  const projectName = path.basename(workspaceRoot);
+  const projectFile = path.join(agentsDir, 'project.yml');
+  const taskFile = path.join(tasksDir, 'task-001.md');
+
+  if (!fs.existsSync(projectFile)) {
+    const project = [
+      `name: ${projectName}`,
+      `goal: Bootstrapped Patchbay workspace for ${projectName}`,
+      `repoPath: ${workspaceRoot.replace(/\\/g, '/')}`,
+      'rules: []',
+      'techStack: []',
+      '',
+    ].join('\n');
+    await fsPromises.writeFile(projectFile, project, 'utf-8');
+  }
+
+  if (!fs.existsSync(taskFile)) {
+    const task = [
+      '---',
+      'id: task-001',
+      'title: Verify Patchbay workspace setup',
+      'status: open',
+      'owner: wintermute',
+      'affectedFiles: []',
+      '---',
+      '',
+      'Confirm that Wintermute, Patchbay CLI, and the local dashboard are wired up for this workspace.',
+      '',
+      '- Start or connect the Patchbay dashboard.',
+      '- Check the configured default runner.',
+      '- Replace this bootstrap task with real project work.',
+      '',
+    ].join('\n');
+    await fsPromises.writeFile(taskFile, task, 'utf-8');
   }
 }
 
