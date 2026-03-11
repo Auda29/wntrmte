@@ -48,4 +48,4 @@ bash build.sh    # auto-detects OS/arch
 
 ## Current status
 
-Phases 1–5 substantially complete. The IDE builds on Linux/macOS/Windows with full branding, minimalist UI defaults, custom theme, compact chrome, and the Patchbay client extension bundled as a built-in. Agent dispatch delegates to Patchbay CLI (`patchbay run`). Phase 5 includes: auto-open Patchbay Start Panel, setup inspector, embedded dashboard, and workspace setup flow (CLI delegation via `patchbay init --yes` with fallback to local bootstrap). One optional item remains (auth-status UX in DashboardPanel). See `PLAN.md` for details.
+Phases 1–5 complete. The IDE builds on Linux/macOS/Windows with full branding, minimalist UI defaults, custom theme, compact chrome, and the Patchbay client extension bundled as a built-in. Agent dispatch delegates to Patchbay CLI (`patchbay run`). Phase 5 includes: auto-open Patchbay Start Panel, setup inspector, embedded dashboard, workspace setup flow (CLI delegation via `patchbay init --yes` with fallback), and auth-status UX (Badge, Card, `configureAuth` Command, `checkPatchbayAuth()`). See `PLAN.md` for details.
