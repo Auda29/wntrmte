@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { spawn } from 'child_process';
+import { getPatchbayCliExecutable } from '../services/SetupInspector';
 
 export type RunResult = 'completed' | 'failed' | 'cancelled';
 
@@ -15,7 +16,7 @@ export class PatchbayRunner {
             outputChannel.appendLine(`\n--- patchbay run ${taskId} ${runnerId} ---\n`);
             outputChannel.show(true);
 
-            const proc = spawn('patchbay', ['run', taskId, runnerId], {
+            const proc = spawn(getPatchbayCliExecutable(), ['run', taskId, runnerId], {
                 cwd: workspaceRoot,
                 stdio: ['ignore', 'pipe', 'pipe'],
             });

@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import * as fsSync from 'fs';
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { execFile } from 'child_process';
+import { execFile, spawn } from 'child_process';
 import { promisify } from 'util';
 import { createStore } from './store/StoreFactory';
 import { PatchbayStore } from './store/PatchbayStore';
@@ -20,11 +20,13 @@ import {
   getWorkspaceContext,
   createPatchbayWorkspace,
   initViaCli,
+  getPatchbayCliExecutable,
   WorkspaceContext,
 } from './services/SetupInspector';
 
 const ALL_STATUSES: TaskStatus[] = ['open', 'in_progress', 'blocked', 'review', 'done'];
 const execFileAsync = promisify(execFile);
+const PANEL_AUTO_REFRESH_MS = 3000;
 
 interface CliInstallPlan {
   label: string;
@@ -37,10 +39,10 @@ interface CliInstallPlan {
 interface TerminalPlan {
   label: string;
   detail: string;
-  terminalName: string;
-  terminalCwd?: string;
+  cwd?: string;
   env?: Record<string, string>;
-  commands: string[];
+  command: string;
+  args: string[];
 }
 
 function getPatchbayCliMissingMessage(): string {
@@ -106,16 +108,27 @@ function getPatchbayCliInstallPlan(workspaceRoot: string | undefined, extensionR
 }
 
 function runTerminalPlan(plan: CliInstallPlan | TerminalPlan): void {
+  if ('commands' in plan) {
+    const terminal = vscode.window.createTerminal({
+      name: plan.terminalName,
+      cwd: plan.terminalCwd,
+      env: 'env' in plan ? plan.env : undefined,
+    });
+    terminal.show(true);
+
+    for (const command of plan.commands) {
+      terminal.sendText(command, true);
+    }
+    return;
+  }
+
   const terminal = vscode.window.createTerminal({
-    name: plan.terminalName,
-    cwd: plan.terminalCwd,
-    env: 'env' in plan ? plan.env : undefined,
+    name: plan.label,
+    cwd: plan.cwd,
+    env: plan.env,
   });
   terminal.show(true);
-
-  for (const command of plan.commands) {
-    terminal.sendText(command, true);
-  }
+  terminal.sendText([plan.command, ...plan.args].join(' '), true);
 }
 
 function getDashboardStartPlan(
@@ -139,11 +152,9 @@ function getDashboardStartPlan(
     return {
       label: 'Start Patchbay server',
       detail: `${parsed.origin} via patchbay serve`,
-      terminalName: 'Patchbay Server',
-      terminalCwd: workspaceRoot,
-      commands: [
-        `patchbay serve --host "${parsed.hostname}" --port ${port} --repo-root "${workspaceRoot}"`,
-      ],
+      cwd: workspaceRoot,
+      command: getPatchbayCliExecutable(),
+      args: ['serve', '--host', parsed.hostname, '--port', port, '--repo-root', workspaceRoot],
     };
   }
 
@@ -155,20 +166,31 @@ function getDashboardStartPlan(
   return {
     label: 'Start Patchbay dashboard',
     detail: `${parsed.origin} via Next.js dev server`,
-    terminalName: 'Patchbay Dashboard',
-    terminalCwd: path.join(localRepo, 'packages', 'dashboard'),
+    cwd: path.join(localRepo, 'packages', 'dashboard'),
     env: {
       PATCHBAY_REPO_ROOT: workspaceRoot,
     },
-    commands: ['npm run dev'],
+    command: process.platform === 'win32' ? 'npm.cmd' : 'npm',
+    args: ['run', 'dev'],
   };
+}
+
+function startBackgroundProcess(plan: TerminalPlan): void {
+  const child = spawn(plan.command, plan.args, {
+    cwd: plan.cwd,
+    env: { ...process.env, ...plan.env },
+    detached: true,
+    stdio: 'ignore',
+    shell: false,
+  });
+  child.unref();
 }
 
 async function runPatchbayCommand(
   workspaceRoot: string,
   args: string[],
 ): Promise<{ stdout: string; stderr: string }> {
-  return execFileAsync('patchbay', args, { cwd: workspaceRoot });
+  return execFileAsync(getPatchbayCliExecutable(), args, { cwd: workspaceRoot });
 }
 
 export function activate(ctx: vscode.ExtensionContext): void {
@@ -186,6 +208,7 @@ export function activate(ctx: vscode.ExtensionContext): void {
   let treeProvider: TaskTreeProvider | undefined;
   let bootstrapDisposables: vscode.Disposable[] = [];
   let latestSetupStatus: SetupStatus | undefined;
+  let panelRefreshInFlight: Promise<SetupStatus> | undefined;
 
   const disposeBootstrap = (): void => {
     for (const disposable of bootstrapDisposables) {
@@ -209,21 +232,50 @@ export function activate(ctx: vscode.ExtensionContext): void {
   };
 
   const refreshPanel = async (show = false): Promise<SetupStatus> => {
-    const inspector = new SetupInspector(getContext());
-    const status = await inspector.inspect();
-    latestSetupStatus = status;
-    updateContexts(
-      getContext(),
-      status.hasWorkspace && status.workspaceReady && status.effectiveMode === 'connected'
-    );
-
-    if (show) {
-      dashboardPanel.show(status, vscode.ViewColumn.Beside);
-    } else {
-      dashboardPanel.update(status);
+    if (panelRefreshInFlight) {
+      return panelRefreshInFlight;
     }
 
-    return status;
+    panelRefreshInFlight = (async () => {
+      const inspector = new SetupInspector(getContext());
+      const status = await inspector.inspect();
+      latestSetupStatus = status;
+      updateContexts(
+        getContext(),
+        status.hasWorkspace && status.workspaceReady && status.effectiveMode === 'connected'
+      );
+
+      if (show) {
+        dashboardPanel.show(status, vscode.ViewColumn.Beside);
+      } else {
+        dashboardPanel.update(status);
+      }
+
+      return status;
+    })();
+
+    try {
+      return await panelRefreshInFlight;
+    } finally {
+      panelRefreshInFlight = undefined;
+    }
+  };
+
+  const schedulePanelRefresh = (): void => {
+    if (!dashboardPanel.isOpen()) {
+      return;
+    }
+
+    void refreshPanel(false);
+  };
+
+  const scheduleDelayedPanelRefresh = (...delays: number[]): void => {
+    for (const delay of delays) {
+      const handle = setTimeout(() => {
+        schedulePanelRefresh();
+      }, delay);
+      ctx.subscriptions.push({ dispose: () => clearTimeout(handle) });
+    }
   };
 
   const initializeStore = async (): Promise<void> => {
@@ -250,6 +302,9 @@ export function activate(ctx: vscode.ExtensionContext): void {
         RunLogProvider.scheme,
         new RunLogProvider()
       ),
+      store.onDidChange(() => {
+        schedulePanelRefresh();
+      }),
     ];
 
     updateContexts(context, storeResult.mode === 'connected');
@@ -288,6 +343,15 @@ export function activate(ctx: vscode.ExtensionContext): void {
     dashboardPanel,
     dashboardToggle,
     { dispose: disposeBootstrap },
+    {
+      dispose: (() => {
+        const timer = setInterval(() => {
+          schedulePanelRefresh();
+        }, PANEL_AUTO_REFRESH_MS);
+
+        return () => clearInterval(timer);
+      })(),
+    },
 
     vscode.workspace.onDidChangeWorkspaceFolders(async () => {
       await initializeStore();
@@ -371,7 +435,9 @@ export function activate(ctx: vscode.ExtensionContext): void {
         );
 
         if (action === 'Start Dashboard' && startPlan) {
-          runTerminalPlan(startPlan);
+          startBackgroundProcess(startPlan);
+          scheduleDelayedPanelRefresh(1500, 4000, 8000);
+          void vscode.window.showInformationMessage(`${startPlan.label} started in the background. Wintermute will update automatically.`);
           return;
         }
 
@@ -381,6 +447,30 @@ export function activate(ctx: vscode.ExtensionContext): void {
       }
 
       await vscode.env.openExternal(vscode.Uri.parse(setupStatus.dashboard.url));
+    }),
+
+    vscode.commands.registerCommand('wntrmte.startPatchbayDashboard', async () => {
+      const setupStatus = latestSetupStatus ?? await refreshPanel(false);
+      const startPlan = getDashboardStartPlan(
+        setupStatus.workspaceRoot,
+        setupStatus.dashboard.url,
+        ctx.extensionUri.fsPath,
+      );
+
+      if (!startPlan) {
+        void vscode.window.showWarningMessage(
+          'Wintermute could not determine how to start Patchbay automatically for the current dashboard URL.'
+        );
+        return;
+      }
+
+      try {
+        startBackgroundProcess(startPlan);
+        scheduleDelayedPanelRefresh(1500, 4000, 8000);
+        void vscode.window.showInformationMessage(`${startPlan.label} started in the background. Wintermute will update automatically.`);
+      } catch (error) {
+        void vscode.window.showErrorMessage(`Failed to start Patchbay dashboard: ${String(error)}`);
+      }
     }),
 
     vscode.commands.registerCommand('wntrmte.checkPatchbayCli', async () => {

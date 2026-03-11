@@ -107,6 +107,8 @@ function getHtml(webview: vscode.Webview, status: SetupStatus): string {
     ? `<button data-command="vscode.openFolder">Open Workspace Folder</button>`
     : !status.workspaceReady
       ? `<button data-command="wntrmte.setupWorkspace">Initialize Patchbay Workspace</button>`
+      : !status.dashboard.reachable
+        ? `<button data-command="wntrmte.startPatchbayDashboard">Start Dashboard</button>`
       : '';
   const nextSteps = getNextSteps(status);
 

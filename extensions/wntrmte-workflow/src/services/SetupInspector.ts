@@ -117,6 +117,10 @@ export function isWorkspaceComplete(workspaceRoot: string, agentsDirName: string
     && fs.existsSync(path.join(base, 'context'));
 }
 
+export function getPatchbayCliExecutable(): string {
+  return process.platform === 'win32' ? 'patchbay.cmd' : 'patchbay';
+}
+
 export async function checkPatchbayCli(cwd?: string): Promise<CliStatus> {
   try {
     const { stdout, stderr } = await execAsync('patchbay --version', cwd ? { cwd } : undefined);
@@ -164,31 +168,34 @@ export async function checkPatchbayAuth(cwd?: string): Promise<AuthStatus> {
 }
 
 export async function probeDashboard(url: string): Promise<DashboardStatus> {
-  try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 2000);
-    const response = await fetch(`${url}/api/state`, { signal: controller.signal });
-    clearTimeout(timeout);
+  let lastError = 'unreachable';
 
-    if (!response.ok) {
+  for (const candidate of getDashboardProbeCandidates(url)) {
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 2000);
+      const response = await fetch(`${candidate}/api/state`, { signal: controller.signal });
+      clearTimeout(timeout);
+
+      if (!response.ok) {
+        lastError = `HTTP ${response.status}`;
+        continue;
+      }
+
       return {
-        reachable: false,
-        url,
-        error: `HTTP ${response.status}`,
+        reachable: true,
+        url: candidate,
       };
+    } catch (error) {
+      lastError = getErrorMessage(error);
     }
-
-    return {
-      reachable: true,
-      url,
-    };
-  } catch (error) {
-    return {
-      reachable: false,
-      url,
-      error: getErrorMessage(error),
-    };
   }
+
+  return {
+    reachable: false,
+    url,
+    error: lastError,
+  };
 }
 
 export interface InitViaCliOptions {
@@ -315,6 +322,38 @@ function parseConfiguredAuthRunners(output: string, supported: string[]): string
   return [...configured];
 }
 
+function getDashboardProbeCandidates(url: string): string[] {
+  const candidates = new Set<string>();
+  candidates.add(trimTrailingSlash(url));
+
+  try {
+    const parsed = new URL(url);
+    if (parsed.hostname === 'localhost') {
+      parsed.hostname = '127.0.0.1';
+      candidates.add(trimTrailingSlash(parsed.toString()));
+    } else if (parsed.hostname === '127.0.0.1') {
+      parsed.hostname = 'localhost';
+      candidates.add(trimTrailingSlash(parsed.toString()));
+    }
+  } catch {
+    // Keep the original URL only if parsing fails.
+  }
+
+  return [...candidates];
+}
+
+function trimTrailingSlash(value: string): string {
+  return value.replace(/\/+$/, '');
+}
+
 function getErrorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
+  if (!(error instanceof Error)) {
+    return String(error);
+  }
+
+  const causeMessage = typeof error.cause === 'object' && error.cause instanceof Error
+    ? error.cause.message
+    : undefined;
+
+  return causeMessage ? `${error.message}: ${causeMessage}` : error.message;
 }

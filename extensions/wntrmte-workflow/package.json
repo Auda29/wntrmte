@@ -65,6 +65,11 @@
         "category": "Wintermute"
       },
       {
+        "command": "wntrmte.startPatchbayDashboard",
+        "title": "Start Patchbay Dashboard",
+        "category": "Wintermute"
+      },
+      {
         "command": "wntrmte.checkPatchbayCli",
         "title": "Check Patchbay CLI",
         "category": "Wintermute"
