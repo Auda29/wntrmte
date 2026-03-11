@@ -193,7 +193,8 @@ Eigene Icons in `icons/` erstellen → `prepare_vscode.sh` kopiert sie in `resou
 
 **TaskTreeProvider** — Task-Übersicht im Editor:
 - Zeigt Tasks nach Status gruppiert (open, in_progress, blocked, review, done)
-- Inline-Aktionen: Status ändern, Runner zuweisen, Run starten
+- Context-Aktion: Status ändern (Set Task Status)
+- Dispatch als View-Title-Action (öffnet Task-Picker → Runner-Picker)
 
 **PatchbayRunner** — CLI-Delegation:
 - Spawnt `patchbay run <taskId> <runnerId>` als Subprocess
