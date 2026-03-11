@@ -58,9 +58,10 @@ By default, Wintermute will probe `http://localhost:3000` and switch into connec
 Patchbay CLI is currently expected from a local `patchbay/` checkout. If you want to run tasks from inside Wintermute, build and install the CLI first:
 
 ```bash
-npm --prefix ../patchbay install
-npm --prefix ../patchbay run build --workspace=@patchbay/cli
-npm install -g ../patchbay/packages/cli
+cd ../patchbay
+npm install
+npm run build --workspace=@patchbay/cli
+npm install -g ./packages/cli
 ```
 
 Then use `Wintermute: Dispatch Task to Runner` to select a task and a runner. Wintermute delegates execution to `patchbay run <taskId> <runnerId>` and streams output into the `Patchbay` output channel.

@@ -84,10 +84,10 @@ function getPatchbayCliInstallPlan(workspaceRoot: string | undefined, extensionR
     label: 'Install from local Patchbay repo',
     detail: localRepo,
     terminalName: 'Patchbay CLI Install',
-    terminalCwd: workspaceRoot ?? localRepo,
+    terminalCwd: localRepo,
     commands: [
-      `npm --prefix "${localRepo}" install`,
-      `npm --prefix "${localRepo}" run build --workspace=@patchbay/cli`,
+      'npm install',
+      'npm run build --workspace=@patchbay/cli',
       `npm install -g "${cliPackageDir}"`,
     ],
   };
