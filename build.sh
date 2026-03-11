@@ -3,6 +3,9 @@
 
 set -ex
 
+# --- Shared branding helpers ---
+. utils.sh
+
 # --- Resolve OS_NAME ---
 if [[ -z "${OS_NAME}" ]]; then
   case "$(uname -s)" in
@@ -61,6 +64,20 @@ elif [[ "${OS_NAME}" == "windows" ]]; then
   npm run gulp "vscode-win32-${VSCODE_ARCH}-min-ci"
 else
   npm run gulp "vscode-linux-${VSCODE_ARCH}-min-ci"
+fi
+
+# --- Post-process packaged branding quirks ---
+if [[ "${OS_NAME}" == "windows" ]]; then
+  output_dir="VSCode-win32-${VSCODE_ARCH}"
+  manifest_path="$(find "${output_dir}" -maxdepth 1 -name '*.VisualElementsManifest.xml' | head -n 1)"
+
+  if [[ -n "${manifest_path}" && -f "${manifest_path}" ]]; then
+    echo "=== Updating Windows VisualElements manifest branding ==="
+    replace "s|ShortDisplayName=\"[^\"]+\"|ShortDisplayName=\"${APP_NAME}\"|g" "${manifest_path}"
+  fi
+
+  unset manifest_path
+  unset output_dir
 fi
 
 cd ..

@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import * as fsSync from 'fs';
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import { execFile, spawn } from 'child_process';
+import { exec, execFile, spawn } from 'child_process';
 import { promisify } from 'util';
 import { createStore } from './store/StoreFactory';
 import { PatchbayStore } from './store/PatchbayStore';
@@ -26,6 +26,7 @@ import {
 
 const ALL_STATUSES: TaskStatus[] = ['open', 'in_progress', 'blocked', 'review', 'done'];
 const execFileAsync = promisify(execFile);
+const execAsync = promisify(exec);
 const PANEL_AUTO_REFRESH_MS = 3000;
 
 interface CliInstallPlan {
@@ -43,6 +44,12 @@ interface TerminalPlan {
   env?: Record<string, string>;
   command: string;
   args: string[];
+}
+
+interface CommandExecutionError extends Error {
+  code?: number | string;
+  stderr?: string;
+  stdout?: string;
 }
 
 function getPatchbayCliMissingMessage(): string {
@@ -184,17 +191,9 @@ function startBackgroundProcess(plan: TerminalPlan): void {
 
   if (process.platform === 'win32') {
     const comspec = env.ComSpec || 'C:\\Windows\\System32\\cmd.exe';
-    const startArgs = [
-      '/d',
-      '/c',
-      'start',
-      '""',
-      '/b',
-      plan.command,
-      ...plan.args,
-    ];
+    const commandLine = [plan.command, ...plan.args].map(quoteShellArg).join(' ');
 
-    const child = spawn(comspec, startArgs, {
+    const child = spawn(comspec, ['/d', '/s', '/c', commandLine], {
       cwd: plan.cwd,
       env,
       detached: true,
@@ -219,7 +218,48 @@ async function runPatchbayCommand(
   workspaceRoot: string,
   args: string[],
 ): Promise<{ stdout: string; stderr: string }> {
+  if (process.platform === 'win32') {
+    const command = [getPatchbayCliExecutable(), ...args].map(quoteShellArg).join(' ');
+    return execAsync(command, { cwd: workspaceRoot });
+  }
+
   return execFileAsync(getPatchbayCliExecutable(), args, { cwd: workspaceRoot });
+}
+
+function quoteShellArg(value: string): string {
+  if (/^[A-Za-z0-9_./:-]+$/.test(value)) {
+    return value;
+  }
+
+  return `"${value.replace(/"/g, '\\"')}"`;
+}
+
+function getCommandErrorMessage(error: unknown): string {
+  if (!error) {
+    return 'Unknown error';
+  }
+
+  if (typeof error === 'string') {
+    return error;
+  }
+
+  const commandError = error as CommandExecutionError;
+  const stderr = commandError.stderr?.trim();
+  const stdout = commandError.stdout?.trim();
+
+  if (stderr) {
+    return stderr;
+  }
+
+  if (stdout) {
+    return stdout;
+  }
+
+  if (commandError.message) {
+    return commandError.message;
+  }
+
+  return String(error);
 }
 
 export function activate(ctx: vscode.ExtensionContext): void {
@@ -621,7 +661,7 @@ export function activate(ctx: vscode.ExtensionContext): void {
         await refreshPanel(dashboardPanel.isOpen());
         void vscode.window.showInformationMessage(`Configured ${authMode.label.toLowerCase()} auth for ${pick.label}.`);
       } catch (error) {
-        void vscode.window.showErrorMessage(`Failed to configure auth for ${pick.label}: ${String(error)}`);
+        void vscode.window.showErrorMessage(`Failed to configure auth for ${pick.label}: ${getCommandErrorMessage(error)}`);
       }
     }),
 
