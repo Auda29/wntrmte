@@ -231,6 +231,120 @@ Eigene Icons in `icons/` erstellen → `prepare_vscode.sh` kopiert sie in `resou
 
 ---
 
+## Phase 5: Patchbay Start Panel
+
+**Ziel:** Beim Öffnen eines Patchbay-Workspaces erscheint rechts direkt ein nützliches Patchbay-Panel. Es zeigt entweder das eingebettete Dashboard oder eine lokale Setup-/Konfigurationsfläche.
+
+### Produktziel
+
+- Patchbay soll beim Start in wntrmte präsent sein, nicht erst nach manuellem Command
+- Das Panel soll Setup-Probleme sichtbar machen statt nur ein leeres/kaputtes iframe zu zeigen
+- Wintermute bleibt **Patchbay-Client**, nicht zweite Orchestrierungszentrale
+
+### Zustände des Panels
+
+**Setup-State:**
+- Dashboard nicht erreichbar
+- `patchbay` CLI fehlt
+- `.project-agents/` fehlt oder Workspace ist nicht vorbereitet
+- Panel zeigt Setup-Status + direkte Aktionen
+
+**Connected-State:**
+- Patchbay-Dashboard erreichbar
+- Dashboard wird im rechten Editor-Bereich eingebettet
+- Kleine lokale Kopfzeile mit Status und Schnellaktionen bleibt erhalten
+
+### MVP (empfohlene erste Umsetzung)
+
+1. **Auto-Open beim Start**
+   - Neues Setting: `wntrmte.workflow.openDashboardOnStartup` (Default: `true`)
+   - Öffnet das Panel automatisch beim Aktivieren der Extension
+   - Nur in Workspaces mit `.project-agents/` oder explizitem Patchbay-Bezug
+
+2. **DashboardPanel zu echter Startfläche ausbauen**
+   - `DashboardPanel.ts` bekommt State-Logik statt reinem `iframe`
+   - Webview kann zwischen Setup-State und Connected-State umschalten
+   - Panel öffnet bevorzugt in der rechten Editor-Spalte
+
+3. **Setup-Status sichtbar machen**
+   - Prüfen: Dashboard erreichbar?
+   - Prüfen: `patchbay --version` erfolgreich?
+   - Prüfen: `.project-agents/` vorhanden?
+   - Anzeigen: aktueller Mode (`auto` / `offline` / `connected`)
+   - Anzeigen: aktueller `defaultRunner`
+
+4. **Direkte Setup-Aktionen im Panel**
+   - `Check Patchbay CLI`
+   - `Show Patchbay CLI install command`
+   - `Open Patchbay Dashboard`
+   - `Switch Mode`
+   - `Set Default Runner`
+
+5. **Iframe nur wenn sinnvoll**
+   - Bei erreichbarem Dashboard: `iframe` laden
+   - Bei nicht erreichbarem Dashboard: Setup-Ansicht statt kaputter Fallback-Seite
+
+### Erweiterung nach MVP
+
+**Workspace Setup:**
+- Aktion `Initialize Patchbay Workspace`
+- Erst prüfen, ob dies von Patchbay CLI/Dashboard übernommen werden sollte
+- Wenn nicht vorhanden: minimalen kompatiblen `.project-agents/`-Bootstrap definieren
+
+**Runner-/Provider-Konfiguration:**
+- `defaultRunner` im Panel auswählbar
+- Provider-spezifische Einstiege wie `Configure Claude Code`, `Configure Codex`, `Configure Gemini`
+- Auth und Provider-Konfiguration möglichst über Patchbay-CLI oder Patchbay-Dashboard anstoßen, nicht separat in wntrmte duplizieren
+
+**Panel-Polish:**
+- Refresh/Reconnect Button
+- `Open in Browser`
+- `Open Patchbay Output`
+- kompakte Statusleiste über dem eingebetteten Dashboard
+
+### Technische Tasks
+
+1. `DashboardPanel.ts` refactoren:
+   - Webview-State statt statischem HTML
+   - Message-Bridge Webview ↔ Extension Host
+   - Render-Pfade für Setup-State und Connected-State
+
+2. `extension.ts` erweitern:
+   - Auto-Open beim Start
+   - neues Startup-Setting lesen
+   - Panel bei Mode-/Status-Änderungen aktualisieren
+
+3. Setup-Inspektor einführen:
+   - lokaler Service für CLI-, Dashboard- und Workspace-Checks
+   - Ergebnis als strukturiertes Statusmodell ins Webview geben
+
+4. Commands ergänzen:
+   - `wntrmte.checkPatchbayCli`
+   - `wntrmte.showPatchbayCliInstall`
+   - `wntrmte.setupWorkspace`
+   - `wntrmte.setDefaultRunner`
+   - `wntrmte.refreshDashboardPanel`
+
+5. Konfiguration erweitern:
+   - `wntrmte.workflow.openDashboardOnStartup`
+   - optional später `wntrmte.workflow.dashboardLocation`
+
+### Abgrenzung / Architekturregel
+
+- Wintermute zeigt Setup, Status und Einstiege
+- Patchbay bleibt Owner für Orchestrierung, Runner-Registry und `.project-agents`-Schema
+- Provider/Auth-Daten sollten nach Möglichkeit in Patchbay/CLI leben, nicht doppelt in der Extension
+
+### Verifikation
+
+1. Patchbay-Workspace öffnen → Panel erscheint automatisch rechts
+2. Ohne laufendes Dashboard → Setup-State mit klaren Aktionen sichtbar
+3. Mit laufendem Dashboard auf `http://localhost:3000` → Embedded Dashboard sichtbar
+4. Fehlende CLI → Panel zeigt Install-Hinweis statt Dispatch-Fehler erst beim Klick
+5. `defaultRunner` im Panel ändern → Dispatch nutzt den neuen Default
+
+---
+
 ## Monatlicher Upstream-Update Prozess
 
 ```bash
@@ -290,3 +404,12 @@ bash build.sh                        # Full Build
 - [x] `product.json` configuration defaults für Theme + Editor-Font
 - [x] Title Bar Höhe auf 28px reduziert
 - [x] Sidebar-/Panel-Header auf 28px reduziert
+
+### Phase 5: Patchbay Start Panel — Planned
+- [ ] Auto-Open Patchbay-Panel beim Start (`openDashboardOnStartup`)
+- [ ] DashboardPanel von `iframe`-Wrapper zu zustandsfähiger Webview umbauen
+- [ ] Setup-State für CLI, Dashboard und Workspace-Status
+- [ ] Panel-Aktionen: CLI prüfen, Install-Hinweis, Dashboard öffnen, Mode wechseln, Default Runner setzen
+- [ ] Embedded Dashboard nur bei erreichbarem Backend anzeigen
+- [ ] Workspace-Setup-Flow für `.project-agents/` evaluieren
+- [ ] Runner-/Provider-Konfiguration sinnvoll zwischen wntrmte und Patchbay aufteilen

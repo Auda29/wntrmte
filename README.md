@@ -17,6 +17,52 @@ Wintermute is a custom VS Code distribution (VSCodium-style: build scripts + pat
 
 Binary: `wntrmte` | Data folder: `.wntrmte`
 
+## Quickstart
+
+Wintermute is most useful in a workspace that already contains a Patchbay-compatible `.project-agents/` directory.
+
+### 1. Build Wintermute
+
+```bash
+fnm use
+bash build.sh
+```
+
+Launch the resulting binary from `VSCode-{platform}-{arch}/`.
+
+### 2. Open a Patchbay workspace
+
+Open any project that contains `.project-agents/`. Wintermute will automatically activate the built-in Patchbay client extension and show:
+
+- a task tree in the Explorer
+- run logs for task executions
+- Patchbay-aware task status controls
+
+### 3. Choose your mode
+
+**Offline mode** — no backend required. Wintermute reads `.project-agents/` directly from disk.
+
+**Connected mode** — run the Patchbay dashboard, then open the same workspace in Wintermute:
+
+```bash
+cd ../patchbay
+fnm use
+npm install
+npm run dev
+```
+
+By default, Wintermute will probe `http://localhost:3000` and switch into connected mode when the dashboard is available.
+
+### 4. Dispatch a task through Patchbay
+
+Install the Patchbay CLI if you want to run tasks from inside Wintermute:
+
+```bash
+npm install -g @patchbay/cli
+```
+
+Then use `Wintermute: Dispatch Task to Runner` to select a task and a runner. Wintermute delegates execution to `patchbay run <taskId> <runnerId>` and streams output into the `Patchbay` output channel.
+
 ## Architecture
 
 Wintermute never forks VS Code directly. Instead, it clones a pinned upstream commit at build time and applies a curated set of patches. This keeps upstream updates cheap — bump a version tag, check patches, rebuild.
