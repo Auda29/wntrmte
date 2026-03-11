@@ -461,7 +461,8 @@ Auth-Status im DashboardPanel anzeigen. Konfiguration bleibt in Patchbay CLI.
   - "Recommended Next Steps" berücksichtigt fehlende Auth-Konfiguration
 - [x] `wntrmte.configureAuth` Command in `src/extension.ts` + `package.json`
   - QuickPick für fehlende Runner
-  - Startet `patchbay auth set <runner>` in einem VS-Code-Terminal
+  - Führt `patchbay auth set <runner>` direkt aus der Extension aus
+  - Unterstützt `Subscription` und `API Key`
   - Fällt bei fehlender CLI sauber auf Install-Hinweis zurück
 - [x] `dashboardUrl` Setting-Beschreibung in `package.json` aktualisiert
   - Hinweis auf Dashboard (`3000`) oder Standalone-Server (`3001`)
@@ -489,8 +490,7 @@ Auth-Status im DashboardPanel anzeigen. Konfiguration bleibt in Patchbay CLI.
 Mehrere UX- und Plattform-Fixes aus realem Test-Workspace-Feedback.
 
 - [x] `CLI Install` führt nicht mehr nur einen Copy-Flow aus
-  - Sucht eine lokale `patchbay/`-Checkout
-  - Fragt per Confirm
+  - Bietet `Use existing checkout`, `Clone Patchbay nearby` und `Show manual steps`
   - Führt Build + globale CLI-Installation im integrierten Terminal aus
 - [x] Fehlerhafter npm-Hinweis `npm install -g @patchbay/cli` entfernt
   - Wintermute und README verweisen jetzt auf lokalen Build-/Install-Flow aus dem Companion-Repo
@@ -512,58 +512,19 @@ Mehrere UX- und Plattform-Fixes aus realem Test-Workspace-Feedback.
   - Periodischer Auto-Refresh solange das Panel offen ist
   - Zusätzliche verzögerte Refreshes nach `Start Dashboard`
   - Webview rendert nur bei echtem HTML-Änderungsfall neu, um unnötige iframe-Resets zu vermeiden
+- [x] Webview-Refresh weiter beruhigt
+  - Stabile CSP-Nonce pro Panel verhindert unnötige komplette HTML-Resets
+  - Eingebettetes Dashboard pollt Daten selbst, ohne dass Wintermute die UI jedes Mal spürbar neu aufbaut
+- [x] Windows-Startmenü-Branding korrigiert
+  - `build.sh` post-processiert die erzeugte `*.VisualElementsManifest.xml`
+  - `ShortDisplayName` wird auf `Wintermute` gesetzt statt `Code - OSS`
 
 **Architekturentscheidung**
 
 - Wintermute bleibt Patchbay-Client und startet lokale Flows nur als Convenience
 - Patchbay CLI bleibt Source of Truth für Auth und Dispatch
 - Das Setup-Panel soll Statusänderungen automatisch widerspiegeln statt den Nutzer auf manuelle Refreshes zu zwingen
-
-**Bekannter Restpunkt**
-
-- Lokaler Compile-/Smoke-Check der Extension bleibt in der aktuellen WSL-/Node-Umgebung eingeschränkt
-
-**Verifikation**
-
-1. `CLI Install` startet Build/Install aus lokalem `patchbay/`-Repo statt nur Clipboard-Text zu zeigen
-2. `Configure Auth` funktioniert auf Windows ohne `spawn patchbay ENOENT`
-3. `Start Dashboard` startet den Prozess im Hintergrund und das Panel springt automatisch auf `Dashboard online`
-4. Eingebettetes Dashboard bleibt bei Auto-Refresh stabil geöffnet und verliert offene UI nicht durch unnötige Webview-Resets
-
-#### 5c: Setup Panel Polish + Windows CLI Robustness — IMPLEMENTED
-
-Mehrere UX- und Plattform-Fixes aus realem Test-Workspace-Feedback.
-
-- [x] `CLI Install` führt nicht mehr nur einen Copy-Flow aus
-  - Sucht eine lokale `patchbay/`-Checkout
-  - Fragt per Confirm
-  - Führt Build + globale CLI-Installation im integrierten Terminal aus
-- [x] Fehlerhafter npm-Hinweis `npm install -g @patchbay/cli` entfernt
-  - Wintermute und README verweisen jetzt auf lokalen Build-/Install-Flow aus dem Companion-Repo
-- [x] Doppelter `Refresh`-Button im Setup-Panel entfernt
-- [x] `Configure Auth` verbessert
-  - Auswahl zwischen `Subscription` und `API Key`
-  - API-Key-Eingabe direkt in Wintermute
-  - CLI-Ausführung nicht mehr nur als halber Terminal-Handoff
-- [x] Windows-CLI-Aufrufe robust gemacht
-  - Plattformabhängige Auflösung `patchbay.cmd` statt blindem `patchbay`
-  - Betrifft Auth-Konfiguration, Dispatch und Standalone-Server-Start
-- [x] `Start Dashboard`-Aktion ergänzt
-  - Als eigener Panel-Button wenn das Dashboard offline ist
-  - Startet Dashboard/Server im Hintergrund statt mit Terminal-Fokus
-- [x] Reachability-Check robuster gemacht
-  - Probing gegen `localhost` und `127.0.0.1`
-  - Bessere Fehlermeldungen aus dem internen Fetch
-- [x] Panel aktualisiert sich automatisch
-  - Periodischer Auto-Refresh solange das Panel offen ist
-  - Zusätzliche verzögerte Refreshes nach `Start Dashboard`
-  - Webview rendert nur bei echtem HTML-Änderungsfall neu, um unnötige iframe-Resets zu vermeiden
-
-**Architekturentscheidung**
-
-- Wintermute bleibt Patchbay-Client und startet lokale Flows nur als Convenience
-- Patchbay CLI bleibt Source of Truth für Auth und Dispatch
-- Das Setup-Panel soll Statusänderungen automatisch widerspiegeln statt den Nutzer auf manuelle Refreshes zu zwingen
+- Ein echter Endnutzer-CLI-Installer sollte langfristig ohne Repo-Clone auskommen; der aktuelle Clone-/Checkout-Flow ist ein pragmatischer Zwischenstand
 
 **Bekannter Restpunkt**
 

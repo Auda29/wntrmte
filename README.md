@@ -51,11 +51,17 @@ npm install
 npm run dev
 ```
 
-By default, Wintermute will probe `http://localhost:3000` and switch into connected mode when the dashboard is available.
+By default, Wintermute probes `http://localhost:3000` and switches into connected mode when the dashboard is available. If the dashboard is offline, the Patchbay panel can start it via `Start Dashboard`.
 
 ### 4. Dispatch a task through Patchbay
 
-Patchbay CLI is currently expected from a local `patchbay/` checkout. If you want to run tasks from inside Wintermute, build and install the CLI first:
+If you want to run tasks from inside Wintermute, install the Patchbay CLI first. The built-in `CLI Install` flow currently offers:
+
+- `Use existing checkout` — build/install from a nearby local Patchbay repo
+- `Clone Patchbay nearby` — clone the official Patchbay repo and install from there
+- `Show manual steps` — open the companion repo if you want to run the setup yourself
+
+Manual install remains:
 
 ```bash
 cd ../patchbay
@@ -109,7 +115,7 @@ Mode is auto-detected (probes `localhost:3000`), or configurable via `wntrmte.wo
 | **Run Logs** | View run details, logs, and summaries |
 | **Status Bar** | Live count of running/blocked/open tasks |
 | **Agent Dispatch** | Dispatch a task to any Patchbay runner via `patchbay run` CLI |
-| **Dashboard Webview** | Embedded Patchbay dashboard panel (connected mode) |
+| **Dashboard Webview** | Embedded Patchbay dashboard panel with setup state, auto-refresh, and `Start Dashboard` action |
 
 ### Commands
 
@@ -119,7 +125,9 @@ Mode is auto-detected (probes `localhost:3000`), or configurable via `wntrmte.wo
 - `Wintermute: Switch Connection Mode` — toggle auto/offline/connected
 - `Wintermute: Initialize Patchbay Workspace` — delegates to `patchbay init` CLI when available, falls back to local bootstrap
 - `Wintermute: Set Default Runner` — choose the default runner for dispatch
-- `Wintermute: Configure Runner Auth` — QuickPick unconfigured runners, opens terminal with `patchbay auth set <runner>`
+- `Wintermute: Configure Runner Auth` — QuickPick missing runners, then choose `Subscription` or `API Key`
+
+`Subscription` stores the auth mode in Patchbay and assumes the underlying runner CLI already has a valid login context. It does not open an OAuth or browser sign-in flow by itself.
 
 ## Prerequisites
 
