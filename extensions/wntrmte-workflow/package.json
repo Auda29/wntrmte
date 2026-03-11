@@ -71,7 +71,7 @@
       },
       {
         "command": "wntrmte.showPatchbayCliInstall",
-        "title": "Show Patchbay CLI Install Command",
+        "title": "Install Patchbay CLI",
         "category": "Wintermute"
       },
       {

@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import * as fsSync from 'fs';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { createStore } from './store/StoreFactory';
@@ -21,6 +22,88 @@ import {
 } from './services/SetupInspector';
 
 const ALL_STATUSES: TaskStatus[] = ['open', 'in_progress', 'blocked', 'review', 'done'];
+
+interface CliInstallPlan {
+  label: string;
+  detail: string;
+  terminalName: string;
+  terminalCwd?: string;
+  commands: string[];
+}
+
+function getPatchbayCliMissingMessage(): string {
+  return 'Patchbay CLI not found. Use the CLI Install action to build and install it from a local Patchbay checkout.';
+}
+
+function hasPatchbayCliPackage(repoRoot: string): boolean {
+  return fsSync.existsSync(path.join(repoRoot, 'packages', 'cli', 'package.json'));
+}
+
+function collectPatchbayRepoCandidates(workspaceRoot: string | undefined, extensionRoot: string): string[] {
+  const bases = new Set<string>();
+  if (workspaceRoot) {
+    bases.add(workspaceRoot);
+    bases.add(path.dirname(workspaceRoot));
+    bases.add(path.resolve(workspaceRoot, '..', 'wntrmte_patchbay'));
+  }
+
+  let current = extensionRoot;
+  for (let index = 0; index < 8; index += 1) {
+    bases.add(current);
+    current = path.dirname(current);
+  }
+
+  const candidates = new Set<string>();
+  for (const base of bases) {
+    candidates.add(base);
+    candidates.add(path.join(base, 'patchbay'));
+    candidates.add(path.join(base, 'wntrmte_patchbay', 'patchbay'));
+  }
+
+  return [...candidates];
+}
+
+function findLocalPatchbayRepo(workspaceRoot: string | undefined, extensionRoot: string): string | undefined {
+  for (const candidate of collectPatchbayRepoCandidates(workspaceRoot, extensionRoot)) {
+    if (hasPatchbayCliPackage(candidate)) {
+      return candidate;
+    }
+  }
+
+  return undefined;
+}
+
+function getPatchbayCliInstallPlan(workspaceRoot: string | undefined, extensionRoot: string): CliInstallPlan | undefined {
+  const localRepo = findLocalPatchbayRepo(workspaceRoot, extensionRoot);
+  if (!localRepo) {
+    return undefined;
+  }
+
+  const cliPackageDir = path.join(localRepo, 'packages', 'cli');
+  return {
+    label: 'Install from local Patchbay repo',
+    detail: localRepo,
+    terminalName: 'Patchbay CLI Install',
+    terminalCwd: workspaceRoot ?? localRepo,
+    commands: [
+      `npm --prefix "${localRepo}" install`,
+      `npm --prefix "${localRepo}" run build --workspace=@patchbay/cli`,
+      `npm install -g "${cliPackageDir}"`,
+    ],
+  };
+}
+
+async function runCliInstallPlan(plan: CliInstallPlan): Promise<void> {
+  const terminal = vscode.window.createTerminal({
+    name: plan.terminalName,
+    cwd: plan.terminalCwd,
+  });
+  terminal.show(true);
+
+  for (const command of plan.commands) {
+    terminal.sendText(command, true);
+  }
+}
 
 export function activate(ctx: vscode.ExtensionContext): void {
   const patchbayRunner = new PatchbayRunner();
@@ -223,14 +306,24 @@ export function activate(ctx: vscode.ExtensionContext): void {
     }),
 
     vscode.commands.registerCommand('wntrmte.showPatchbayCliInstall', async () => {
-      const installCommand = 'npm install -g @patchbay/cli';
+      const context = getContext();
+      const installPlan = getPatchbayCliInstallPlan(context.workspaceRoot, ctx.extensionUri.fsPath);
+
+      if (!installPlan) {
+        void vscode.window.showWarningMessage(
+          'Automatic CLI install is only available when Wintermute can find a local Patchbay checkout nearby.'
+        );
+        return;
+      }
+
       const action = await vscode.window.showInformationMessage(
-        `Install Patchbay CLI with: ${installCommand}`,
-        'Copy Command'
+        `${installPlan.label} from ${installPlan.detail}? Wintermute will run the build/install steps in the integrated terminal.`,
+        { modal: true },
+        'Run in Terminal'
       );
 
-      if (action === 'Copy Command') {
-        await vscode.env.clipboard.writeText(installCommand);
+      if (action === 'Run in Terminal') {
+        await runCliInstallPlan(installPlan);
       }
     }),
 
@@ -261,10 +354,10 @@ export function activate(ctx: vscode.ExtensionContext): void {
       if (!setupStatus.cli.available || !setupStatus.auth.available) {
         const action = await vscode.window.showWarningMessage(
           'Patchbay CLI is required to configure runner auth.',
-          'Copy Install Command'
+          'Install CLI'
         );
-        if (action === 'Copy Install Command') {
-          await vscode.env.clipboard.writeText('npm install -g @patchbay/cli');
+        if (action === 'Install CLI') {
+          await vscode.commands.executeCommand('wntrmte.showPatchbayCliInstall');
         }
         return;
       }
@@ -334,10 +427,10 @@ export function activate(ctx: vscode.ExtensionContext): void {
           } else {
             void vscode.window.showInformationMessage(
               'Created local bootstrap. Install Patchbay CLI for a full setup with schema validation.',
-              'Copy Install Command'
+              'Install CLI'
             ).then((action) => {
-              if (action === 'Copy Install Command') {
-                void vscode.env.clipboard.writeText('npm install -g @patchbay/cli');
+              if (action === 'Install CLI') {
+                void vscode.commands.executeCommand('wntrmte.showPatchbayCliInstall');
               }
             });
           }
@@ -377,7 +470,7 @@ export function activate(ctx: vscode.ExtensionContext): void {
       const context = getContext();
       const cli = await checkPatchbayCli(context.workspaceRoot);
       if (!cli.available) {
-        void vscode.window.showErrorMessage('patchbay CLI not found. Install via: npm install -g @patchbay/cli');
+        void vscode.window.showErrorMessage(getPatchbayCliMissingMessage());
         return;
       }
 
