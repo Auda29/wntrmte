@@ -26,6 +26,20 @@ export class DashboardPanel {
     return this._panel !== undefined;
   }
 
+  hide(): void {
+    this._panel?.dispose();
+    this._panel = undefined;
+  }
+
+  toggle(status: SetupStatus, column: vscode.ViewColumn = vscode.ViewColumn.Beside): void {
+    if (this._panel) {
+      this.hide();
+      return;
+    }
+
+    this.show(status, column);
+  }
+
   dispose(): void {
     this._panel?.dispose();
     this._panel = undefined;
@@ -69,23 +83,26 @@ function getHtml(webview: vscode.Webview, status: SetupStatus): string {
   const nonce = getNonce();
   const title = escapeHtml(getPanelTitle(status));
   const dashboardUrl = escapeHtml(status.dashboard.url);
-  const cliLabel = status.cli.available
+  const cliDetail = status.cli.available
     ? status.cli.version ?? 'available'
     : status.cli.error ?? 'not installed';
-  const dashboardLabel = status.dashboard.reachable
+  const dashboardDetail = status.dashboard.reachable
     ? 'reachable'
     : status.dashboard.error ?? 'unreachable';
-  const workspaceLabel = !status.hasWorkspace
-    ? 'no workspace open'
+  const workspaceBadge = !status.hasWorkspace
+    ? 'No workspace'
     : status.workspaceReady
-      ? `${status.agentsDirName} found`
-      : `${status.agentsDirName} missing`;
+      ? 'Workspace ready'
+      : 'Workspace setup needed';
+  const cliBadge = status.cli.available ? 'CLI ready' : 'CLI missing';
+  const dashboardBadge = status.dashboard.reachable ? 'Dashboard online' : 'Dashboard offline';
   const connected = status.hasWorkspace && status.workspaceReady && status.dashboard.reachable;
   const primaryWorkspaceAction = !status.hasWorkspace
     ? `<button data-command="vscode.openFolder">Open Workspace Folder</button>`
     : !status.workspaceReady
       ? `<button data-command="wntrmte.setupWorkspace">Initialize Patchbay Workspace</button>`
       : `<button data-command="wntrmte.refreshDashboardPanel">Refresh</button>`;
+  const nextSteps = getNextSteps(status);
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -217,6 +234,30 @@ function getHtml(webview: vscode.Webview, status: SetupStatus): string {
       line-height: 1.45;
       word-break: break-word;
     }
+    .list {
+      display: grid;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .step {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      color: var(--vscode-descriptionForeground);
+      line-height: 1.4;
+    }
+    .step-index {
+      flex: none;
+      width: 20px;
+      height: 20px;
+      border-radius: 999px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      background: var(--vscode-button-secondaryBackground);
+      color: var(--vscode-button-secondaryForeground);
+    }
     .hero {
       padding: 16px;
       border-bottom: 1px solid var(--vscode-panel-border);
@@ -244,9 +285,9 @@ function getHtml(webview: vscode.Webview, status: SetupStatus): string {
         <span class="badge ${connected ? 'ok' : 'warn'}">${connected ? 'Connected' : 'Setup needed'}</span>
       </div>
       <div class="meta">
-        ${renderBadge(status.workspaceReady, workspaceLabel)}
-        ${renderBadge(status.cli.available, `CLI ${cliLabel}`)}
-        ${renderBadge(status.dashboard.reachable, `Dashboard ${dashboardLabel}`)}
+        ${renderBadge(status.hasWorkspace && status.workspaceReady, workspaceBadge)}
+        ${renderBadge(status.cli.available, cliBadge)}
+        ${renderBadge(status.dashboard.reachable, dashboardBadge)}
         <span class="badge">Mode ${escapeHtml(status.configuredMode)} -> ${escapeHtml(status.effectiveMode)}</span>
         <span class="badge">Runner ${escapeHtml(status.defaultRunner)}</span>
       </div>
@@ -284,18 +325,29 @@ function getHtml(webview: vscode.Webview, status: SetupStatus): string {
         <div class="card">
           <h2>Patchbay CLI</h2>
           <p>${status.cli.available
-            ? `CLI detected as <code>${escapeHtml(cliLabel)}</code>. Dispatch can use the configured runner once tasks are available.`
-            : `CLI check failed: <code>${escapeHtml(cliLabel)}</code>. Use the install hint to bootstrap <code>patchbay</code> locally.`}</p>
+            ? `CLI detected as <code>${escapeHtml(cliDetail)}</code>. Dispatch can use the configured runner once tasks are available.`
+            : `Patchbay CLI is not available yet. Current check result: <code>${escapeHtml(cliDetail)}</code>. Use the install hint to bootstrap <code>patchbay</code> locally.`}</p>
         </div>
         <div class="card">
           <h2>Dashboard</h2>
           <p>${status.dashboard.reachable
             ? `Dashboard is reachable at <code>${dashboardUrl}</code>.`
-            : `Dashboard probe to <code>${dashboardUrl}</code> failed${status.dashboard.error ? ` with <code>${escapeHtml(status.dashboard.error)}</code>` : ''}. Start Patchbay or open it in a browser to verify.`}</p>
+            : `Dashboard is currently offline at <code>${dashboardUrl}</code>${status.dashboard.error ? `. Last probe: <code>${escapeHtml(dashboardDetail)}</code>` : ''}. Start Patchbay or open it in a browser to verify.`}</p>
         </div>
         <div class="card">
           <h2>Mode</h2>
           <p>Configured mode is <code>${escapeHtml(status.configuredMode)}</code>, which currently resolves to <code>${escapeHtml(status.effectiveMode)}</code>. You can switch modes without reloading the window.</p>
+        </div>
+        <div class="card">
+          <h2>Recommended Next Steps</h2>
+          <div class="list">
+            ${nextSteps.map((step, index) => `
+              <div class="step">
+                <span class="step-index">${index + 1}</span>
+                <span>${escapeHtml(step)}</span>
+              </div>
+            `).join('')}
+          </div>
         </div>
       </div>
       `}
@@ -325,6 +377,29 @@ function getPanelTitle(status: SetupStatus): string {
   }
 
   return status.dashboard.reachable ? 'Patchbay Dashboard' : 'Patchbay Setup';
+}
+
+function getNextSteps(status: SetupStatus): string[] {
+  const steps: string[] = [];
+
+  if (!status.hasWorkspace) {
+    steps.push('Open the project folder you want to work on.');
+    steps.push('Initialize a Patchbay workspace for that folder.');
+  } else if (!status.workspaceReady) {
+    steps.push(`Create ${status.agentsDirName} for this workspace.`);
+  }
+
+  if (!status.cli.available) {
+    steps.push('Install the Patchbay CLI so task dispatch can run locally.');
+  }
+
+  if (!status.dashboard.reachable) {
+    steps.push('Start the Patchbay dashboard or verify the configured dashboard URL.');
+  }
+
+  steps.push('Confirm the default runner you want Wintermute to use.');
+
+  return steps.slice(0, 4);
 }
 
 function escapeHtml(value: string): string {

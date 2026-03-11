@@ -48,6 +48,12 @@
         "category": "Wintermute"
       },
       {
+        "command": "wntrmte.toggleDashboard",
+        "title": "Toggle Patchbay Dashboard",
+        "icon": "$(layout-sidebar-right)",
+        "category": "Wintermute"
+      },
+      {
         "command": "wntrmte.refreshDashboardPanel",
         "title": "Refresh Patchbay Panel",
         "icon": "$(refresh)",

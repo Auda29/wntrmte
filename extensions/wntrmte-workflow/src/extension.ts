@@ -25,6 +25,12 @@ export function activate(ctx: vscode.ExtensionContext): void {
   const patchbayRunner = new PatchbayRunner();
   const outputChannel = vscode.window.createOutputChannel('Patchbay');
   const dashboardPanel = new DashboardPanel();
+  const dashboardToggle = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
+  dashboardToggle.name = 'Patchbay Dashboard Toggle';
+  dashboardToggle.command = 'wntrmte.toggleDashboard';
+  dashboardToggle.text = '$(layout-sidebar-right) Patchbay';
+  dashboardToggle.tooltip = 'Toggle the Patchbay start panel';
+  dashboardToggle.show();
 
   let store: PatchbayStore | undefined;
   let treeProvider: TaskTreeProvider | undefined;
@@ -130,6 +136,7 @@ export function activate(ctx: vscode.ExtensionContext): void {
   ctx.subscriptions.push(
     outputChannel,
     dashboardPanel,
+    dashboardToggle,
     { dispose: disposeBootstrap },
 
     vscode.workspace.onDidChangeWorkspaceFolders(async () => {
@@ -185,6 +192,11 @@ export function activate(ctx: vscode.ExtensionContext): void {
 
     vscode.commands.registerCommand('wntrmte.openDashboard', () => {
       void refreshPanel(true);
+    }),
+
+    vscode.commands.registerCommand('wntrmte.toggleDashboard', async () => {
+      const setupStatus = latestSetupStatus ?? await refreshPanel(false);
+      dashboardPanel.toggle(setupStatus, vscode.ViewColumn.Beside);
     }),
 
     vscode.commands.registerCommand('wntrmte.refreshDashboardPanel', async () => {

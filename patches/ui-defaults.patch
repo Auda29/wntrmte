@@ -96,7 +96,7 @@ index 058693c..613b373 100644
  				],
  				'description': localize('showEditorTabs', "Controls whether opened editors should show as individual tabs, one single large tab or if the title area should not be shown."),
 -				'default': 'multiple'
-+				'default': 'none'
++				'default': 'multiple'
  			},
  			[LayoutSettings.EDITOR_ACTIONS_LOCATION]: {
  				'type': 'string',
