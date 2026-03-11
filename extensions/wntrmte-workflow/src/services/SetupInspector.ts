@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as fsPromises from 'fs/promises';
 import * as path from 'path';
-import { exec } from 'child_process';
+import { exec, spawn } from 'child_process';
 import { promisify } from 'util';
 import type { StoreMode } from '../store/StoreFactory';
 
@@ -32,6 +32,7 @@ export interface DashboardStatus {
 export interface SetupStatus {
   hasWorkspace: boolean;
   workspaceReady: boolean;
+  workspaceComplete: boolean;
   workspaceRoot?: string;
   agentsDirName: string;
   configuredMode: StoreMode;
@@ -55,9 +56,14 @@ export class SetupInspector {
       probeDashboard(dashboardUrl),
     ]);
 
+    const workspaceComplete = this.context.workspaceReady
+      && !!this.context.workspaceRoot
+      && isWorkspaceComplete(this.context.workspaceRoot, this.context.agentsDirName);
+
     return {
       hasWorkspace: this.context.hasWorkspace,
       workspaceReady: this.context.workspaceReady,
+      workspaceComplete,
       workspaceRoot: this.context.workspaceRoot,
       agentsDirName: this.context.agentsDirName,
       configuredMode,
@@ -92,10 +98,17 @@ export function hasProjectAgentsDir(workspaceRoot: string, agentsDirName: string
   return fs.existsSync(path.join(workspaceRoot, agentsDirName));
 }
 
+export function isWorkspaceComplete(workspaceRoot: string, agentsDirName: string): boolean {
+  const base = path.join(workspaceRoot, agentsDirName);
+  return fs.existsSync(path.join(base, 'agents'))
+    && fs.existsSync(path.join(base, 'decisions'))
+    && fs.existsSync(path.join(base, 'context'));
+}
+
 export async function checkPatchbayCli(cwd?: string): Promise<CliStatus> {
   try {
     const { stdout, stderr } = await execAsync('patchbay --version', cwd ? { cwd } : undefined);
-    const version = (stdout || stderr).trim();
+    const version = String(stdout || stderr).trim();
     return {
       available: true,
       version: version || 'patchbay',
@@ -136,13 +149,63 @@ export async function probeDashboard(url: string): Promise<DashboardStatus> {
   }
 }
 
+export interface InitViaCliOptions {
+  name: string;
+  goal: string;
+  techStack: string;
+}
+
+export async function initViaCli(
+  workspaceRoot: string,
+  opts: InitViaCliOptions,
+): Promise<boolean> {
+  return new Promise((resolve) => {
+    const args = [
+      'init',
+      '--yes',
+      '--name', opts.name,
+      '--goal', opts.goal,
+      '--tech-stack', opts.techStack,
+    ];
+
+    const proc = spawn('patchbay', args, {
+      cwd: workspaceRoot,
+      shell: true,
+      stdio: 'pipe',
+    });
+
+    let stderr = '';
+    proc.stderr?.on('data', (chunk: Buffer) => { stderr += chunk.toString(); });
+
+    proc.on('close', (code) => {
+      if (code === 0) {
+        resolve(true);
+      } else {
+        console.error(`patchbay init failed (exit ${code}): ${stderr.trim()}`);
+        resolve(false);
+      }
+    });
+
+    proc.on('error', (err) => {
+      console.error('patchbay init spawn error:', err.message);
+      resolve(false);
+    });
+  });
+}
+
 export async function createPatchbayWorkspace(workspaceRoot: string, agentsDirName: string): Promise<void> {
   const agentsDir = path.join(workspaceRoot, agentsDirName);
   const tasksDir = path.join(agentsDir, 'tasks');
   const runsDir = path.join(agentsDir, 'runs');
+  const agentProfilesDir = path.join(agentsDir, 'agents');
+  const decisionsDir = path.join(agentsDir, 'decisions');
+  const contextDir = path.join(agentsDir, 'context');
 
   await fsPromises.mkdir(tasksDir, { recursive: true });
   await fsPromises.mkdir(runsDir, { recursive: true });
+  await fsPromises.mkdir(agentProfilesDir, { recursive: true });
+  await fsPromises.mkdir(decisionsDir, { recursive: true });
+  await fsPromises.mkdir(contextDir, { recursive: true });
 
   const projectName = path.basename(workspaceRoot);
   const projectFile = path.join(agentsDir, 'project.yml');

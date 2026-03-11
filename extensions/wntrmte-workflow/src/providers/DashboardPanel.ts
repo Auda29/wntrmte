@@ -319,7 +319,9 @@ function getHtml(webview: vscode.Webview, status: SetupStatus): string {
           <p>${!status.hasWorkspace
             ? 'No workspace is currently open. Open a project folder first, then initialize Patchbay metadata for that folder.'
             : status.workspaceReady
-            ? `The workspace contains <code>${escapeHtml(status.agentsDirName)}</code> and can use the local file-backed store.`
+            ? status.workspaceComplete
+              ? `The workspace contains <code>${escapeHtml(status.agentsDirName)}</code> with all directories and can use the local file-backed store.`
+              : `The workspace contains <code>${escapeHtml(status.agentsDirName)}</code> but is missing some directories (agents/, decisions/, context/). Run <code>patchbay init</code> or re-initialize for a complete setup.`
             : `The workspace is missing <code>${escapeHtml(status.agentsDirName)}</code>, so Patchbay features stay in setup mode.`}</p>
         </div>
         <div class="card">
@@ -387,6 +389,8 @@ function getNextSteps(status: SetupStatus): string[] {
     steps.push('Initialize a Patchbay workspace for that folder.');
   } else if (!status.workspaceReady) {
     steps.push(`Create ${status.agentsDirName} for this workspace.`);
+  } else if (!status.workspaceComplete) {
+    steps.push('Run patchbay init or re-initialize to add missing directories (agents/, decisions/, context/).');
   }
 
   if (!status.cli.available) {

@@ -30,6 +30,7 @@ The extension (`extensions/wntrmte-workflow/`) is a **Patchbay client**, not a s
   - `src/store/StoreFactory.ts` — Auto-detect offline/connected mode
   - `src/providers/` — TaskTreeProvider, RunLogProvider, StatusBarItem, DashboardPanel
   - `src/agent/` — PatchbayRunner (delegates to `patchbay run` CLI, streams output to VS Code Output Channel)
+  - `src/services/` — SetupInspector (CLI/dashboard/workspace checks, `initViaCli()` for CLI delegation), constants
 
 ## Build
 
@@ -47,4 +48,4 @@ bash build.sh    # auto-detects OS/arch
 
 ## Current status
 
-Phases 1–4 complete. The IDE builds on Linux/macOS/Windows with full branding, minimalist UI defaults, custom theme, compact chrome, and the Patchbay client extension bundled as a built-in. Agent dispatch now delegates to Patchbay CLI (`patchbay run`) instead of using `vscode.lm` API. See `PLAN.md` for details.
+Phases 1–5 substantially complete. The IDE builds on Linux/macOS/Windows with full branding, minimalist UI defaults, custom theme, compact chrome, and the Patchbay client extension bundled as a built-in. Agent dispatch delegates to Patchbay CLI (`patchbay run`). Phase 5 includes: auto-open Patchbay Start Panel, setup inspector, embedded dashboard, and workspace setup flow (CLI delegation via `patchbay init --yes` with fallback to local bootstrap). One optional item remains (auth-status UX in DashboardPanel). See `PLAN.md` for details.

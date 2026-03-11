@@ -424,5 +424,38 @@ bash build.sh                        # Full Build
 - [x] Panel-Aktionen: CLI prüfen, Install-Hinweis, Dashboard öffnen, Mode wechseln, Default Runner setzen
 - [x] Embedded Dashboard nur bei erreichbarem Backend anzeigen
 - [x] Compile-/Smoke-Check der Extension über die Build-/CI-Pipeline erfolgreich
-- [ ] Workspace-Setup-Flow für `.project-agents/` evaluieren
-- [ ] Runner-/Provider-Konfiguration sinnvoll zwischen wntrmte und Patchbay aufteilen
+
+#### 5a: Workspace-Setup-Flow — DONE
+
+CLI-Delegation wenn verfügbar, erweiterter lokaler Fallback wenn nicht.
+
+**Abhängigkeit:** `patchbay init --yes` Flag (siehe `patchbay/PLAN.md` Phase 7a) — implementiert
+
+- [x] `initViaCli(workspaceRoot, name, goal, techStack): Promise<boolean>` in `src/services/SetupInspector.ts`
+  - Spawnt `patchbay init --name "..." --goal "..." --tech-stack "..." --yes` im Workspace-Root
+  - Gibt `true` bei Erfolg, `false` bei Fehler zurück
+- [x] `setupWorkspace` Command in `src/extension.ts` überarbeiten:
+  - `checkPatchbayCli()` → wenn CLI da: Name/Goal/TechStack via `showInputBox()` abfragen → `initViaCli()`
+  - Wenn CLI fehlt: Fallback auf `createPatchbayWorkspace()` + Notification "CLI empfohlen"
+- [x] `createPatchbayWorkspace()` in `src/services/SetupInspector.ts` erweitern:
+  - Zusätzlich `agents/`, `decisions/`, `context/` Dirs erstellen (nur mkdir, kein Core-Import)
+- [x] DashboardPanel `src/providers/DashboardPanel.ts`: Init-Vollständigkeit prüfen
+  - `isWorkspaceComplete()` checkt ob `agents/`, `decisions/`, `context/` existieren
+  - Workspace-Card und Next-Steps zeigen Hinweis falls unvollständig
+
+#### 5b: Auth-Status UX — PLANNED
+
+Auth-Status im DashboardPanel anzeigen. Konfiguration bleibt in Patchbay CLI.
+
+- [ ] `AuthStatus` Interface + `checkPatchbayAuth()` in `src/services/SetupInspector.ts`
+  - Spawnt `patchbay auth list`, parst Output → `{ configured: string[]; missing: string[] }`
+  - `SetupStatus` erhält neues Feld `auth: AuthStatus`
+- [ ] DashboardPanel `src/providers/DashboardPanel.ts`:
+  - Header: Auth-Badge ("Auth 3/7")
+  - Setup-State: Auth-Card mit konfigurierte/fehlende Runner
+  - Button "Configure Auth" → `wntrmte.configureAuth` Command
+- [ ] `wntrmte.configureAuth` Command in `src/extension.ts` + `package.json`:
+  - QuickPick der Runner ohne Auth → `createTerminal()` mit `patchbay auth set <runner>`
+- [ ] `AVAILABLE_RUNNERS` in `src/services/constants.ts` auf alle 7 Runner erweitern (`http`, `cursor` hinzufügen)
+- [ ] `dashboardUrl` Setting-Beschreibung in `package.json` aktualisieren:
+  - Kann auf Dashboard (Port 3000) oder Standalone-Server (Port 3001) zeigen

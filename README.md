@@ -114,6 +114,8 @@ Mode is auto-detected (probes `localhost:3000`), or configurable via `wntrmte.wo
 - `Wintermute: Open Patchbay Dashboard` — open the dashboard as a webview
 - `Wintermute: Set Task Status` — change task status from the tree view
 - `Wintermute: Switch Connection Mode` — toggle auto/offline/connected
+- `Wintermute: Initialize Patchbay Workspace` — delegates to `patchbay init` CLI when available, falls back to local bootstrap
+- `Wintermute: Set Default Runner` — choose the default runner for dispatch
 
 ## Prerequisites
 
@@ -166,7 +168,7 @@ bash build.sh
 - [x] Phase 2: Branding + minimalist UI defaults
 - [x] Phase 3: Patchbay client extension (offline + connected + PatchbayRunner)
 - [x] Phase 4: Source-level polish (custom theme, compact chrome, font defaults)
-- [ ] Phase 5: Patchbay Start Panel (optional onboarding/UX layer, see `PLAN.md`)
+- [x] Phase 5: Patchbay Start Panel (auto-open, setup inspector, embedded dashboard, see `PLAN.md`)
 
 ## Companion: Patchbay
 

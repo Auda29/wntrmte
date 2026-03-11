@@ -16,6 +16,7 @@ import {
   SetupStatus,
   getWorkspaceContext,
   createPatchbayWorkspace,
+  initViaCli,
   WorkspaceContext,
 } from './services/SetupInspector';
 
@@ -259,15 +260,55 @@ export function activate(ctx: vscode.ExtensionContext): void {
       if (!workspaceRoot) { return; }
 
       const agentsDirName = getAgentsDirName();
-      try {
-        await createPatchbayWorkspace(workspaceRoot, agentsDirName);
+      const projectName = path.basename(workspaceRoot);
 
-        const projectName = path.basename(workspaceRoot);
+      try {
+        const cli = await checkPatchbayCli(workspaceRoot);
+        let usedCli = false;
+
+        if (cli.available) {
+          const name = await vscode.window.showInputBox({
+            title: 'Project Name',
+            value: projectName,
+            prompt: 'Name for the Patchbay project',
+          });
+          if (!name) { return; }
+
+          const goal = await vscode.window.showInputBox({
+            title: 'Project Goal',
+            value: 'To build awesome software',
+            prompt: 'Main goal of this project',
+          });
+          if (!goal) { return; }
+
+          const techStack = await vscode.window.showInputBox({
+            title: 'Tech Stack',
+            value: 'Node.js, TypeScript',
+            prompt: 'Tech stack (comma separated)',
+          });
+          if (!techStack) { return; }
+
+          usedCli = await initViaCli(workspaceRoot, { name, goal, techStack });
+        }
+
+        if (!usedCli) {
+          await createPatchbayWorkspace(workspaceRoot, agentsDirName);
+          if (cli.available) {
+            void vscode.window.showWarningMessage('CLI init failed — created minimal bootstrap instead.');
+          } else {
+            void vscode.window.showInformationMessage(
+              'Created local bootstrap. Install Patchbay CLI for a full setup with schema validation.',
+              'Copy Install Command'
+            ).then((action) => {
+              if (action === 'Copy Install Command') {
+                void vscode.env.clipboard.writeText('npm install -g @patchbay/cli');
+              }
+            });
+          }
+        }
+
         const projectFile = path.join(workspaceRoot, agentsDirName, 'project.yml');
         const initialTask = path.join(workspaceRoot, agentsDirName, 'tasks', 'task-001.md');
-
-        await fs.access(projectFile);
-        await fs.access(initialTask);
 
         await initializeStore();
 
@@ -281,8 +322,12 @@ export function activate(ctx: vscode.ExtensionContext): void {
           const document = await vscode.workspace.openTextDocument(projectFile);
           await vscode.window.showTextDocument(document);
         } else if (action === 'Open Initial Task') {
-          const document = await vscode.workspace.openTextDocument(initialTask);
-          await vscode.window.showTextDocument(document);
+          try {
+            const document = await vscode.workspace.openTextDocument(initialTask);
+            await vscode.window.showTextDocument(document);
+          } catch {
+            // CLI init doesn't create a bootstrap task — that's fine
+          }
         }
       } catch (error) {
         void vscode.window.showErrorMessage(`Failed to initialize Patchbay workspace: ${String(error)}`);
