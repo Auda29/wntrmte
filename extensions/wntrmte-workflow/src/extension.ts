@@ -103,13 +103,7 @@ function findLocalPatchbayRepo(workspaceRoot: string | undefined, extensionRoot:
   return undefined;
 }
 
-function getPatchbayCliInstallPlan(workspaceRoot: string | undefined, extensionRoot: string): CliInstallPlan | undefined {
-  const localRepo = findLocalPatchbayRepo(workspaceRoot, extensionRoot);
-  if (!localRepo) {
-    return undefined;
-  }
-
-  const cliPackageDir = path.join(localRepo, 'packages', 'cli');
+function createLocalInstallPlan(localRepo: string): CliInstallPlan {
   return {
     label: 'Install from local Patchbay repo',
     detail: localRepo,
@@ -117,10 +111,15 @@ function getPatchbayCliInstallPlan(workspaceRoot: string | undefined, extensionR
     terminalCwd: localRepo,
     commands: [
       'npm install',
-      'npm run build --workspace=@patchbay/cli',
-      `npm install -g "${cliPackageDir}"`,
+      'npm run build',
+      'npm link --workspace=@patchbay/cli',
     ],
   };
+}
+
+function getSuggestedPatchbayRepoDir(workspaceRoot: string | undefined, extensionRoot: string): string {
+  return findLocalPatchbayRepo(workspaceRoot, extensionRoot)
+    ?? getSuggestedPatchbayCloneDir(workspaceRoot);
 }
 
 function getSuggestedPatchbayCloneDir(workspaceRoot: string | undefined): string {
@@ -132,18 +131,15 @@ function getSuggestedPatchbayCloneDir(workspaceRoot: string | undefined): string
 }
 
 function getPatchbayCliInstallOptions(workspaceRoot: string | undefined, extensionRoot: string): CliInstallOption[] {
+  const detectedRepo = findLocalPatchbayRepo(workspaceRoot, extensionRoot);
   const options: CliInstallOption[] = [];
-  const localPlan = getPatchbayCliInstallPlan(workspaceRoot, extensionRoot);
 
-  if (localPlan) {
-    options.push({
-      label: 'Use existing checkout',
-      description: 'Build and install from a local Patchbay repo',
-      detail: localPlan.detail,
-      plan: localPlan,
-      kind: 'local',
-    });
-  }
+  options.push({
+    label: 'Use existing checkout',
+    description: 'Choose a local Patchbay repo and install the CLI from it',
+    detail: detectedRepo ?? 'Select the local Patchbay folder',
+    kind: 'local',
+  });
 
   options.push({
     label: 'Clone Patchbay nearby',
@@ -166,7 +162,6 @@ function createCloneInstallPlan(destinationDir: string): CliInstallPlan {
   const repoRoot = path.resolve(destinationDir);
   const parentDir = path.dirname(repoRoot);
   const repoName = path.basename(repoRoot);
-  const cliPackageDir = path.join(repoRoot, 'packages', 'cli');
 
   return {
     label: 'Clone and install Patchbay CLI',
@@ -177,8 +172,8 @@ function createCloneInstallPlan(destinationDir: string): CliInstallPlan {
       `git clone "${PATCHBAY_REPO_URL}" "${repoName}"`,
       `cd "${repoRoot}"`,
       'npm install',
-      'npm run build --workspace=@patchbay/cli',
-      `npm install -g "${cliPackageDir}"`,
+      'npm run build',
+      'npm link --workspace=@patchbay/cli',
     ],
   };
 }
@@ -642,6 +637,27 @@ export function activate(ctx: vscode.ExtensionContext): void {
       }
 
       let installPlan = selection.plan;
+
+      if (selection.kind === 'local') {
+        const suggestedRepo = getSuggestedPatchbayRepoDir(context.workspaceRoot, ctx.extensionUri.fsPath);
+        const pickedRepo = await vscode.window.showOpenDialog({
+          title: 'Select local Patchbay repository',
+          defaultUri: vscode.Uri.file(suggestedRepo),
+          canSelectFiles: false,
+          canSelectFolders: true,
+          canSelectMany: false,
+          openLabel: 'Use this folder',
+        });
+        const localRepo = pickedRepo?.[0]?.fsPath;
+        if (!localRepo) { return; }
+
+        if (!hasPatchbayCliPackage(localRepo)) {
+          void vscode.window.showWarningMessage(`The selected folder is not a Patchbay repo: ${localRepo}`);
+          return;
+        }
+
+        installPlan = createLocalInstallPlan(localRepo);
+      }
 
       if (selection.kind === 'clone') {
         const destinationDir = await vscode.window.showInputBox({
