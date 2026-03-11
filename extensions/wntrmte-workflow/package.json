@@ -80,6 +80,11 @@
         "category": "Wintermute"
       },
       {
+        "command": "wntrmte.configureAuth",
+        "title": "Configure Runner Auth",
+        "category": "Wintermute"
+      },
+      {
         "command": "wntrmte.setupWorkspace",
         "title": "Initialize Patchbay Workspace",
         "category": "Wintermute"
@@ -128,7 +133,7 @@
         "wntrmte.workflow.dashboardUrl": {
           "type": "string",
           "default": "http://localhost:3000",
-          "description": "URL of the Patchbay Dashboard (for connected mode and webview)."
+          "description": "URL of the Patchbay Dashboard or standalone server for connected mode and the embedded webview (for example port 3000 or 3001)."
         },
         "wntrmte.workflow.mode": {
           "type": "string",
@@ -138,7 +143,7 @@
         },
         "wntrmte.workflow.defaultRunner": {
           "type": "string",
-          "enum": ["claude-code", "codex", "gemini", "cursor-cli", "bash"],
+          "enum": ["claude-code", "codex", "gemini", "cursor", "cursor-cli", "http", "bash"],
           "default": "claude-code",
           "description": "Default Patchbay runner for task dispatch."
         },

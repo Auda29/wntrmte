@@ -443,19 +443,43 @@ CLI-Delegation wenn verfügbar, erweiterter lokaler Fallback wenn nicht.
   - `isWorkspaceComplete()` checkt ob `agents/`, `decisions/`, `context/` existieren
   - Workspace-Card und Next-Steps zeigen Hinweis falls unvollständig
 
-#### 5b: Auth-Status UX — PLANNED
+#### 5b: Auth-Status UX — IMPLEMENTED
 
 Auth-Status im DashboardPanel anzeigen. Konfiguration bleibt in Patchbay CLI.
 
-- [ ] `AuthStatus` Interface + `checkPatchbayAuth()` in `src/services/SetupInspector.ts`
-  - Spawnt `patchbay auth list`, parst Output → `{ configured: string[]; missing: string[] }`
-  - `SetupStatus` erhält neues Feld `auth: AuthStatus`
-- [ ] DashboardPanel `src/providers/DashboardPanel.ts`:
-  - Header: Auth-Badge ("Auth 3/7")
-  - Setup-State: Auth-Card mit konfigurierte/fehlende Runner
-  - Button "Configure Auth" → `wntrmte.configureAuth` Command
-- [ ] `wntrmte.configureAuth` Command in `src/extension.ts` + `package.json`:
-  - QuickPick der Runner ohne Auth → `createTerminal()` mit `patchbay auth set <runner>`
-- [ ] `AVAILABLE_RUNNERS` in `src/services/constants.ts` auf alle 7 Runner erweitern (`http`, `cursor` hinzufügen)
-- [ ] `dashboardUrl` Setting-Beschreibung in `package.json` aktualisieren:
-  - Kann auf Dashboard (Port 3000) oder Standalone-Server (Port 3001) zeigen
+- [x] `AuthStatus` Interface + `checkPatchbayAuth()` in `src/services/SetupInspector.ts`
+  - Parst den aktuellen `patchbay auth list`-Output tolerant
+  - `SetupStatus` enthält jetzt `auth: AuthStatus`
+  - Auth-Check läuft parallel zu CLI- und Dashboard-Checks
+- [x] `AVAILABLE_RUNNERS` in `src/services/constants.ts` auf Patchbay-Runner erweitert
+  - Hinzugefügt: `cursor`, `http`
+  - Separate `AUTH_RUNNERS`-Liste für tatsächlich auth-relevante Runner
+- [x] DashboardPanel `src/providers/DashboardPanel.ts`
+  - Header-Badge für Auth-Status (`Auth x/y`)
+  - Setup-State mit eigener Auth-Card
+  - Connected-State zeigt Auth weiter in der Kopfzeile
+  - "Recommended Next Steps" berücksichtigt fehlende Auth-Konfiguration
+- [x] `wntrmte.configureAuth` Command in `src/extension.ts` + `package.json`
+  - QuickPick für fehlende Runner
+  - Startet `patchbay auth set <runner>` in einem VS-Code-Terminal
+  - Fällt bei fehlender CLI sauber auf Install-Hinweis zurück
+- [x] `dashboardUrl` Setting-Beschreibung in `package.json` aktualisiert
+  - Hinweis auf Dashboard (`3000`) oder Standalone-Server (`3001`)
+
+**Architekturentscheidung**
+
+- Wintermute zeigt Auth-Status und startet den CLI-Flow
+- Patchbay CLI bleibt Source of Truth für Auth
+- Keine Secret-Eingabe oder lokale Auth-Speicherung im Webview
+
+**Bekannter Restpunkt**
+
+- Compile-/Smoke-Test der Extension konnte lokal noch nicht sauber bestätigt werden, weil die WSL-/Node-Umgebung im aktuellen Setup fehlschlägt (`npm run compile` bricht vor dem eigentlichen Build ab)
+
+**Verifikation**
+
+1. Ohne Patchbay CLI: Panel zeigt Auth als nicht verfügbar, ohne zu crashen
+2. Mit CLI, aber ohne konfigurierte Runner: Auth-Badge zeigt Defizit, QuickPick listet fehlende Runner
+3. Nach `patchbay auth set <runner>` und Refresh: Badge/Card aktualisieren sich korrekt
+4. Bei vollständig konfigurierten auth-relevanten Runnern: Badge wechselt auf `ok`
+5. Connected-State mit laufendem Dashboard zeigt weiterhin Auth-Status in der Kopfzeile

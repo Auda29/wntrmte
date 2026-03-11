@@ -5,6 +5,7 @@ import * as path from 'path';
 import { exec, spawn } from 'child_process';
 import { promisify } from 'util';
 import type { StoreMode } from '../store/StoreFactory';
+import { AUTH_RUNNERS } from './constants';
 
 const execAsync = promisify(exec);
 
@@ -29,6 +30,14 @@ export interface DashboardStatus {
   error?: string;
 }
 
+export interface AuthStatus {
+  supported: string[];
+  configured: string[];
+  missing: string[];
+  available: boolean;
+  error?: string;
+}
+
 export interface SetupStatus {
   hasWorkspace: boolean;
   workspaceReady: boolean;
@@ -40,6 +49,7 @@ export interface SetupStatus {
   defaultRunner: string;
   cli: CliStatus;
   dashboard: DashboardStatus;
+  auth: AuthStatus;
 }
 
 export class SetupInspector {
@@ -51,9 +61,10 @@ export class SetupInspector {
     const defaultRunner = config.get<string>('defaultRunner', 'claude-code');
     const dashboardUrl = config.get<string>('dashboardUrl', 'http://localhost:3000');
 
-    const [cli, dashboard] = await Promise.all([
+    const [cli, dashboard, auth] = await Promise.all([
       checkPatchbayCli(this.context.workspaceRoot),
       probeDashboard(dashboardUrl),
+      checkPatchbayAuth(this.context.workspaceRoot),
     ]);
 
     const workspaceComplete = this.context.workspaceReady
@@ -71,6 +82,7 @@ export class SetupInspector {
       defaultRunner,
       cli,
       dashboard,
+      auth,
     };
   }
 }
@@ -115,6 +127,36 @@ export async function checkPatchbayCli(cwd?: string): Promise<CliStatus> {
     };
   } catch (error) {
     return {
+      available: false,
+      error: getErrorMessage(error),
+    };
+  }
+}
+
+export async function checkPatchbayAuth(cwd?: string): Promise<AuthStatus> {
+  const supported = [...AUTH_RUNNERS];
+
+  try {
+    const { stdout, stderr } = await execAsync('patchbay auth list', cwd ? { cwd } : undefined);
+    const output = String(stdout || stderr);
+    const configured = parseConfiguredAuthRunners(output, supported);
+
+    return {
+      supported,
+      configured,
+      missing: supported.filter((runner) => !configured.includes(runner)),
+      available: true,
+      error: output.includes('No runner auth configured')
+        ? undefined
+        : configured.length === 0 && output.trim().length > 0
+          ? 'Unable to parse `patchbay auth list` output.'
+          : undefined,
+    };
+  } catch (error) {
+    return {
+      supported,
+      configured: [],
+      missing: supported,
       available: false,
       error: getErrorMessage(error),
     };
@@ -254,6 +296,23 @@ export function resolveEffectiveMode(mode: StoreMode, dashboardReachable: boolea
   }
 
   return dashboardReachable ? 'connected' : 'offline';
+}
+
+function parseConfiguredAuthRunners(output: string, supported: string[]): string[] {
+  if (output.includes('No runner auth configured')) {
+    return [];
+  }
+
+  const configured = new Set<string>();
+
+  for (const line of output.split(/\r?\n/)) {
+    const match = line.match(/^\s*(\S+)\s+(subscription|apiKey)\b/);
+    if (match && supported.includes(match[1])) {
+      configured.add(match[1]);
+    }
+  }
+
+  return [...configured];
 }
 
 function getErrorMessage(error: unknown): string {

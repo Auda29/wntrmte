@@ -83,6 +83,11 @@ function getHtml(webview: vscode.Webview, status: SetupStatus): string {
   const nonce = getNonce();
   const title = escapeHtml(getPanelTitle(status));
   const dashboardUrl = escapeHtml(status.dashboard.url);
+  const authConfiguredCount = status.auth.configured.length;
+  const authSupportedCount = status.auth.supported.length;
+  const authSummary = status.auth.available
+    ? `Auth ${authConfiguredCount}/${authSupportedCount}`
+    : 'Auth unavailable';
   const cliDetail = status.cli.available
     ? status.cli.version ?? 'available'
     : status.cli.error ?? 'not installed';
@@ -96,6 +101,7 @@ function getHtml(webview: vscode.Webview, status: SetupStatus): string {
       : 'Workspace setup needed';
   const cliBadge = status.cli.available ? 'CLI ready' : 'CLI missing';
   const dashboardBadge = status.dashboard.reachable ? 'Dashboard online' : 'Dashboard offline';
+  const authBadgeOk = status.auth.available && status.auth.missing.length === 0;
   const connected = status.hasWorkspace && status.workspaceReady && status.dashboard.reachable;
   const primaryWorkspaceAction = !status.hasWorkspace
     ? `<button data-command="vscode.openFolder">Open Workspace Folder</button>`
@@ -288,6 +294,7 @@ function getHtml(webview: vscode.Webview, status: SetupStatus): string {
         ${renderBadge(status.hasWorkspace && status.workspaceReady, workspaceBadge)}
         ${renderBadge(status.cli.available, cliBadge)}
         ${renderBadge(status.dashboard.reachable, dashboardBadge)}
+        ${renderBadge(authBadgeOk, authSummary)}
         <span class="badge">Mode ${escapeHtml(status.configuredMode)} -> ${escapeHtml(status.effectiveMode)}</span>
         <span class="badge">Runner ${escapeHtml(status.defaultRunner)}</span>
       </div>
@@ -299,12 +306,13 @@ function getHtml(webview: vscode.Webview, status: SetupStatus): string {
         <button class="secondary" data-command="wntrmte.showPatchbayCliInstall">CLI Install</button>
         <button class="secondary" data-command="wntrmte.switchMode">Switch Mode</button>
         <button class="secondary" data-command="wntrmte.setDefaultRunner">Set Default Runner</button>
+        <button class="secondary" data-command="wntrmte.configureAuth">Configure Auth</button>
       </div>
     </div>
     <div class="content">
       ${connected ? `
       <div class="hero">
-        Embedded Patchbay dashboard from <code>${dashboardUrl}</code>.
+        Embedded Patchbay dashboard from <code>${dashboardUrl}</code>. ${getAuthHeroCopy(status)}
       </div>
       <iframe src="${dashboardUrl}" title="Patchbay Dashboard"></iframe>
       ` : `
@@ -335,6 +343,10 @@ function getHtml(webview: vscode.Webview, status: SetupStatus): string {
           <p>${status.dashboard.reachable
             ? `Dashboard is reachable at <code>${dashboardUrl}</code>.`
             : `Dashboard is currently offline at <code>${dashboardUrl}</code>${status.dashboard.error ? `. Last probe: <code>${escapeHtml(dashboardDetail)}</code>` : ''}. Start Patchbay or open it in a browser to verify.`}</p>
+        </div>
+        <div class="card">
+          <h2>Runner Auth</h2>
+          <p>${getAuthCardCopy(status)}</p>
         </div>
         <div class="card">
           <h2>Mode</h2>
@@ -401,9 +413,40 @@ function getNextSteps(status: SetupStatus): string[] {
     steps.push('Start the Patchbay dashboard or verify the configured dashboard URL.');
   }
 
+  if (status.auth.available && status.auth.missing.length > 0) {
+    steps.push(`Configure auth for ${status.auth.missing[0]}${status.auth.missing.length > 1 ? ' and other runners' : ''}.`);
+  }
+
   steps.push('Confirm the default runner you want Wintermute to use.');
 
   return steps.slice(0, 4);
+}
+
+function getAuthHeroCopy(status: SetupStatus): string {
+  if (!status.auth.available) {
+    return 'Runner auth could not be checked from the local Patchbay CLI.';
+  }
+
+  if (status.auth.missing.length === 0) {
+    return `All ${status.auth.supported.length} auth-capable runners are configured.`;
+  }
+
+  return `${status.auth.configured.length}/${status.auth.supported.length} auth-capable runners are configured; missing ${escapeHtml(status.auth.missing.join(', '))}.`;
+}
+
+function getAuthCardCopy(status: SetupStatus): string {
+  if (!status.auth.available) {
+    return `Runner auth could not be checked${status.auth.error ? `: <code>${escapeHtml(status.auth.error)}</code>` : ''}. Install or fix the Patchbay CLI, then refresh this panel.`;
+  }
+
+  const configured = status.auth.configured.length > 0
+    ? `<code>${escapeHtml(status.auth.configured.join(', '))}</code>`
+    : 'none yet';
+  const missing = status.auth.missing.length > 0
+    ? `<code>${escapeHtml(status.auth.missing.join(', '))}</code>`
+    : 'none';
+
+  return `Configured: ${configured}. Missing: ${missing}. Wintermute starts the CLI flow, but Patchbay remains the source of truth for auth.`;
 }
 
 function escapeHtml(value: string): string {

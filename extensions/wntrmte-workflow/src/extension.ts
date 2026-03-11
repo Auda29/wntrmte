@@ -255,6 +255,42 @@ export function activate(ctx: vscode.ExtensionContext): void {
         .update('defaultRunner', pick.label, vscode.ConfigurationTarget.Workspace);
     }),
 
+    vscode.commands.registerCommand('wntrmte.configureAuth', async () => {
+      const setupStatus = latestSetupStatus ?? await refreshPanel(false);
+
+      if (!setupStatus.cli.available || !setupStatus.auth.available) {
+        const action = await vscode.window.showWarningMessage(
+          'Patchbay CLI is required to configure runner auth.',
+          'Copy Install Command'
+        );
+        if (action === 'Copy Install Command') {
+          await vscode.env.clipboard.writeText('npm install -g @patchbay/cli');
+        }
+        return;
+      }
+
+      if (setupStatus.auth.missing.length === 0) {
+        void vscode.window.showInformationMessage('All Patchbay runner auth entries are already configured.');
+        return;
+      }
+
+      const pick = await vscode.window.showQuickPick(
+        setupStatus.auth.missing.map((runner) => ({
+          label: runner,
+          description: AVAILABLE_RUNNERS.find((entry) => entry.label === runner)?.description,
+        })),
+        { title: 'Configure auth for runner' }
+      );
+      if (!pick) { return; }
+
+      const terminal = vscode.window.createTerminal({
+        name: 'Patchbay Auth',
+        cwd: setupStatus.workspaceRoot,
+      });
+      terminal.show();
+      terminal.sendText(`patchbay auth set ${pick.label}`, true);
+    }),
+
     vscode.commands.registerCommand('wntrmte.setupWorkspace', async () => {
       const workspaceRoot = await ensureWorkspaceRoot();
       if (!workspaceRoot) { return; }
