@@ -28,6 +28,7 @@ const ALL_STATUSES: TaskStatus[] = ['open', 'in_progress', 'blocked', 'review', 
 const execFileAsync = promisify(execFile);
 const execAsync = promisify(exec);
 const PANEL_AUTO_REFRESH_MS = 3000;
+const PATCHBAY_REPO_URL = 'https://github.com/Auda29/patchbay.git';
 
 interface CliInstallPlan {
   label: string;
@@ -35,6 +36,14 @@ interface CliInstallPlan {
   terminalName: string;
   terminalCwd?: string;
   commands: string[];
+}
+
+interface CliInstallOption {
+  label: string;
+  description: string;
+  detail: string;
+  plan?: CliInstallPlan;
+  kind: 'local' | 'clone' | 'manual';
 }
 
 interface TerminalPlan {
@@ -107,6 +116,66 @@ function getPatchbayCliInstallPlan(workspaceRoot: string | undefined, extensionR
     terminalName: 'Patchbay CLI Install',
     terminalCwd: localRepo,
     commands: [
+      'npm install',
+      'npm run build --workspace=@patchbay/cli',
+      `npm install -g "${cliPackageDir}"`,
+    ],
+  };
+}
+
+function getSuggestedPatchbayCloneDir(workspaceRoot: string | undefined): string {
+  if (workspaceRoot) {
+    return path.join(path.dirname(workspaceRoot), 'patchbay');
+  }
+
+  return path.join(path.dirname(vscode.env.appRoot), 'patchbay');
+}
+
+function getPatchbayCliInstallOptions(workspaceRoot: string | undefined, extensionRoot: string): CliInstallOption[] {
+  const options: CliInstallOption[] = [];
+  const localPlan = getPatchbayCliInstallPlan(workspaceRoot, extensionRoot);
+
+  if (localPlan) {
+    options.push({
+      label: 'Use existing checkout',
+      description: 'Build and install from a local Patchbay repo',
+      detail: localPlan.detail,
+      plan: localPlan,
+      kind: 'local',
+    });
+  }
+
+  options.push({
+    label: 'Clone Patchbay nearby',
+    description: 'Clone the official Patchbay repo and install the CLI',
+    detail: PATCHBAY_REPO_URL,
+    kind: 'clone',
+  });
+
+  options.push({
+    label: 'Show manual steps',
+    description: 'Open the setup instructions instead of running commands',
+    detail: 'Recommended if you want to review the install flow first',
+    kind: 'manual',
+  });
+
+  return options;
+}
+
+function createCloneInstallPlan(destinationDir: string): CliInstallPlan {
+  const repoRoot = path.resolve(destinationDir);
+  const parentDir = path.dirname(repoRoot);
+  const repoName = path.basename(repoRoot);
+  const cliPackageDir = path.join(repoRoot, 'packages', 'cli');
+
+  return {
+    label: 'Clone and install Patchbay CLI',
+    detail: repoRoot,
+    terminalName: 'Patchbay CLI Install',
+    terminalCwd: parentDir,
+    commands: [
+      `git clone "${PATCHBAY_REPO_URL}" "${repoName}"`,
+      `cd "${repoRoot}"`,
       'npm install',
       'npm run build --workspace=@patchbay/cli',
       `npm install -g "${cliPackageDir}"`,
@@ -557,17 +626,47 @@ export function activate(ctx: vscode.ExtensionContext): void {
 
     vscode.commands.registerCommand('wntrmte.showPatchbayCliInstall', async () => {
       const context = getContext();
-      const installPlan = getPatchbayCliInstallPlan(context.workspaceRoot, ctx.extensionUri.fsPath);
+      const installOptions = getPatchbayCliInstallOptions(context.workspaceRoot, ctx.extensionUri.fsPath);
+      const selection = await vscode.window.showQuickPick(installOptions, {
+        title: 'Install Patchbay CLI',
+        placeHolder: 'Choose how Wintermute should prepare the Patchbay CLI',
+      });
+
+      if (!selection) {
+        return;
+      }
+
+      if (selection.kind === 'manual') {
+        await vscode.env.openExternal(vscode.Uri.parse('https://github.com/Auda29/patchbay'));
+        return;
+      }
+
+      let installPlan = selection.plan;
+
+      if (selection.kind === 'clone') {
+        const destinationDir = await vscode.window.showInputBox({
+          title: 'Clone Patchbay repository',
+          prompt: 'Directory where Wintermute should clone Patchbay before installing the CLI',
+          value: getSuggestedPatchbayCloneDir(context.workspaceRoot),
+          ignoreFocusOut: true,
+        });
+        if (!destinationDir) { return; }
+
+        if (fsSync.existsSync(destinationDir)) {
+          void vscode.window.showWarningMessage(`The destination already exists: ${destinationDir}`);
+          return;
+        }
+
+        installPlan = createCloneInstallPlan(destinationDir);
+      }
 
       if (!installPlan) {
-        void vscode.window.showWarningMessage(
-          'Automatic CLI install is only available when Wintermute can find a local Patchbay checkout nearby.'
-        );
+        void vscode.window.showWarningMessage('Wintermute could not determine a Patchbay CLI install plan.');
         return;
       }
 
       const action = await vscode.window.showInformationMessage(
-        `${installPlan.label} from ${installPlan.detail}? Wintermute will run the build/install steps in the integrated terminal.`,
+        `${installPlan.label}? Wintermute will run the required steps in the integrated terminal.`,
         { modal: true },
         'Run in Terminal'
       );

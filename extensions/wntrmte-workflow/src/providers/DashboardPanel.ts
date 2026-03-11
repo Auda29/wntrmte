@@ -5,6 +5,7 @@ export class DashboardPanel {
   private _panel: vscode.WebviewPanel | undefined;
   private _lastTitle = '';
   private _lastHtml = '';
+  private _nonce = getNonce();
 
   constructor() {}
 
@@ -31,6 +32,7 @@ export class DashboardPanel {
     this._panel = undefined;
     this._lastTitle = '';
     this._lastHtml = '';
+    this._nonce = getNonce();
   }
 
   toggle(status: SetupStatus, column: vscode.ViewColumn = vscode.ViewColumn.Beside): void {
@@ -47,11 +49,12 @@ export class DashboardPanel {
     this._panel = undefined;
     this._lastTitle = '';
     this._lastHtml = '';
+    this._nonce = getNonce();
   }
 
   private applyRender(panel: vscode.WebviewPanel, status: SetupStatus): void {
     const title = getPanelTitle(status);
-    const html = getHtml(panel.webview, status);
+    const html = getHtml(panel.webview, status, this._nonce);
 
     if (title !== this._lastTitle) {
       panel.title = title;
@@ -93,6 +96,7 @@ export class DashboardPanel {
       this._panel = undefined;
       this._lastTitle = '';
       this._lastHtml = '';
+      this._nonce = getNonce();
     });
 
     this._panel = panel;
@@ -100,8 +104,7 @@ export class DashboardPanel {
   }
 }
 
-function getHtml(webview: vscode.Webview, status: SetupStatus): string {
-  const nonce = getNonce();
+function getHtml(webview: vscode.Webview, status: SetupStatus, nonce: string): string {
   const title = escapeHtml(getPanelTitle(status));
   const dashboardUrl = escapeHtml(status.dashboard.url);
   const authConfiguredCount = status.auth.configured.length;
