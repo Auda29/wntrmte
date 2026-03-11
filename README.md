@@ -166,6 +166,7 @@ bash build.sh
 - [x] Phase 2: Branding + minimalist UI defaults
 - [x] Phase 3: Patchbay client extension (offline + connected + PatchbayRunner)
 - [x] Phase 4: Source-level polish (custom theme, compact chrome, font defaults)
+- [ ] Phase 5: Patchbay Start Panel (optional onboarding/UX layer, see `PLAN.md`)
 
 ## Companion: Patchbay
 

@@ -405,6 +405,8 @@ bash build.sh                        # Full Build
 - [x] Title Bar Höhe auf 28px reduziert
 - [x] Sidebar-/Panel-Header auf 28px reduziert
 
+> **Hinweis:** Wenn in anderen Dokumenten von „all core features implemented“ die Rede ist, bezieht sich das auf Phasen 1–4. Phase 5 ist bewusst als zusätzliches UX-/Onboarding-Polish geplant und nicht Teil des Kern-Scopes.
+
 ### Phase 5: Patchbay Start Panel — Planned
 - [ ] Auto-Open Patchbay-Panel beim Start (`openDashboardOnStartup`)
 - [ ] DashboardPanel von `iframe`-Wrapper zu zustandsfähiger Webview umbauen
