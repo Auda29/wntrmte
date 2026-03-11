@@ -291,7 +291,7 @@ Eigene Icons in `icons/` erstellen → `prepare_vscode.sh` kopiert sie in `resou
 - Ein lokaler `SetupInspector` bündelt CLI-, Dashboard- und Workspace-Prüfungen
 - Das Panel aktualisiert sich bei relevanten Konfigurationsänderungen
 - `defaultRunner` und `mode` lassen sich direkt aus dem Panel heraus ändern
-- Der Compile-/Smoke-Check der Extension konnte in der aktuellen lokalen Umgebung noch nicht sauber abgeschlossen werden, weil `npm`/`node` hier an einer WSL-/Node-Konfiguration scheitert
+- Der Build war erfolgreich; der Phase-5-MVP läuft durch die bestehende Build-/CI-Pipeline
 
 ### Erweiterung nach MVP
 
@@ -423,6 +423,6 @@ bash build.sh                        # Full Build
 - [x] Setup-State für CLI, Dashboard und Workspace-Status
 - [x] Panel-Aktionen: CLI prüfen, Install-Hinweis, Dashboard öffnen, Mode wechseln, Default Runner setzen
 - [x] Embedded Dashboard nur bei erreichbarem Backend anzeigen
-- [ ] Compile-/Smoke-Check der Extension in funktionierender Node-Umgebung nachziehen
+- [x] Compile-/Smoke-Check der Extension über die Build-/CI-Pipeline erfolgreich
 - [ ] Workspace-Setup-Flow für `.project-agents/` evaluieren
 - [ ] Runner-/Provider-Konfiguration sinnvoll zwischen wntrmte und Patchbay aufteilen
