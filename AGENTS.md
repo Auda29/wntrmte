@@ -29,7 +29,7 @@ The extension (`extensions/wntrmte-workflow/`) is a **Patchbay client**, not a s
   - `src/store/` — FileStore (offline, `.project-agents/`-based) + ApiStore (connected, SSE + polling)
   - `src/store/StoreFactory.ts` — Auto-detect offline/connected mode
   - `src/providers/` — TaskTreeProvider, RunLogProvider, StatusBarItem, DashboardPanel
-  - `src/agent/` — AgentRunner (vscode.lm loop), ToolRegistry (4 builtin tools), ApprovalGate
+  - `src/agent/` — PatchbayRunner (delegates to `patchbay run` CLI, streams output to VS Code Output Channel)
 
 ## Build
 
@@ -47,4 +47,4 @@ bash build.sh    # auto-detects OS/arch
 
 ## Current status
 
-Phases 1–3 complete. The IDE builds on Linux/macOS/Windows with full branding, minimalist UI defaults, and the Patchbay client extension bundled as a built-in. See `PLAN.md` for details.
+Phases 1–4 complete. The IDE builds on Linux/macOS/Windows with full branding, minimalist UI defaults, custom theme, compact chrome, and the Patchbay client extension bundled as a built-in. Agent dispatch now delegates to Patchbay CLI (`patchbay run`) instead of using `vscode.lm` API. See `PLAN.md` for details.

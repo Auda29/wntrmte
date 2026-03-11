@@ -160,9 +160,7 @@ Eigene Icons in `icons/` erstellen → `prepare_vscode.sh` kopiert sie in `resou
     PatchbayStore                   ← Liest .project-agents/ (offline) oder API (connected)
       → TaskTreeProvider            ← Tree View: Tasks + Status
       → RunLogProvider              ← Run-Logs + Artifacts anzeigen
-      → ApprovalGateHandler         ← Approval-Dialoge im Editor
-      → AgentRunner                 ← LLM-Loop pro Agent (vscode.lm API)
-        → ToolRegistry              ← Tool-Definitionen + Approval Gates
+      → PatchbayRunner              ← Delegiert an `patchbay run` CLI
 ```
 
 ### Extension-Struktur: `extensions/wntrmte-workflow/`
@@ -175,10 +173,8 @@ Eigene Icons in `icons/` erstellen → `prepare_vscode.sh` kopiert sie in `resou
 │   │   ├── PatchbayStore.ts       # Abstraction: file-based oder API-backed
 │   │   ├── FileStore.ts           # Liest/schreibt .project-agents/ direkt
 │   │   └── ApiStore.ts            # HTTP/WebSocket zu Patchbay-Backend
-│   ├── orchestrator/
-│   │   ├── AgentRunner.ts         # LLM-Loop pro Agent (vscode.lm API)
-│   │   ├── ToolRegistry.ts        # Tools + Approval-Liste
-│   │   └── ApprovalGate.ts        # Approval-Dialoge im Editor
+│   ├── agent/
+│   │   └── PatchbayRunner.ts      # Delegiert an `patchbay run` CLI (spawn, live output)
 │   ├── providers/
 │   │   ├── TaskTreeProvider.ts    # Tree View: Tasks mit Status aus .project-agents/
 │   │   ├── RunLogProvider.ts      # Run-Logs + Summaries anzeigen
@@ -199,22 +195,12 @@ Eigene Icons in `icons/` erstellen → `prepare_vscode.sh` kopiert sie in `resou
 - Zeigt Tasks nach Status gruppiert (open, in_progress, blocked, review, done)
 - Inline-Aktionen: Status ändern, Runner zuweisen, Run starten
 
-**AgentRunner** — LLM Conversation Loop:
-- Nutzt `vscode.lm.selectChatModels()` für Modell-Auswahl
-- Iteriert: Request → Stream → Tool Calls → Approval Gate → Execute → Loop
-- Schreibt Run-Logs ins `.project-agents/runs/`-Verzeichnis
-- Emittiert TaskState-Updates via EventEmitter
-
-**ApprovalGate** — Genehmigungen im Editor:
-- Tool-Calls die Genehmigung brauchen lösen Approval-Dialog direkt in wntrmte aus
-- Konfigurierbar: `wntrmte.workflow.requireApprovalForTools`
-- Mensch bestätigt im Editor, nicht im Browser
-
-**ToolRegistry** — Built-in Tools:
-- `fs.readFile` — Datei lesen (kein Approval nötig)
-- `fs.writeFile` — Datei schreiben (Approval required)
-- `shell.execute` — Terminal Command (Approval required)
-- `agent.delegate` — Subagent spawnen
+**PatchbayRunner** — CLI-Delegation:
+- Spawnt `patchbay run <taskId> <runnerId>` als Subprocess
+- Streamt stdout/stderr live in VS Code Output Channel "Patchbay"
+- Unterstützt CancellationToken (proc.kill() bei Abbruch)
+- Ergebnis basiert auf Exit-Code: 0 = completed, sonst failed
+- Runner-Picker mit konfigurierbarem `defaultRunner` Setting
 
 ### Integration in Build:
 `prepare_vscode.sh` baut die Extension (`npm ci && npm run package`) und kopiert sie nach `vscode/extensions/wntrmte-workflow/` — wird als Built-in Extension gebundlet.
@@ -294,9 +280,7 @@ bash build.sh                        # Full Build
 - [x] `ApiStore` (connected mode, SSE zu Patchbay-Backend)
 - [x] `StoreFactory` — Auto-Erkennung offline/connected mit Probe
 - [x] `DashboardPanel` — Patchbay-Dashboard als Webview (iframe)
-- [x] `AgentRunner` — LLM-Loop via vscode.lm API mit Tool-Aufrufen
-- [x] `ToolRegistry` — fs_readFile, fs_writeFile, fs_listDir, shell_execute
-- [x] `ApprovalGate` — Allow/Allow All/Deny Dialoge im Editor
+- [x] ~~`AgentRunner` / `ToolRegistry` / `ApprovalGate`~~ → replaced by `PatchbayRunner` (CLI delegation via `patchbay run`)
 - [x] Build-Integration: Extension wird als Built-in gebundlet (`prepare_vscode.sh` Zeilen 63-71)
 
 ### Phase 4: Source-Level Polish — Done

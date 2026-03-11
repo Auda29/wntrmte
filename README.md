@@ -59,13 +59,12 @@ Mode is auto-detected (probes `localhost:3000`), or configurable via `wntrmte.wo
 | **Task Tree** | Tasks grouped by status in the Explorer sidebar |
 | **Run Logs** | View run details, logs, and summaries |
 | **Status Bar** | Live count of running/blocked/open tasks |
-| **Agent Dispatch** | Run an LLM agent on a task via `vscode.lm` API |
-| **Approval Gate** | Allow/Allow All/Deny dialogs before tool execution |
+| **Agent Dispatch** | Dispatch a task to any Patchbay runner via `patchbay run` CLI |
 | **Dashboard Webview** | Embedded Patchbay dashboard panel (connected mode) |
 
 ### Commands
 
-- `Wintermute: Dispatch Task to Agent` — select a task and run the AgentRunner
+- `Wintermute: Dispatch Task to Runner` — select a task and runner, execute via `patchbay run`
 - `Wintermute: Open Patchbay Dashboard` — open the dashboard as a webview
 - `Wintermute: Set Task Status` — change task status from the tree view
 - `Wintermute: Switch Connection Mode` — toggle auto/offline/connected
@@ -119,7 +118,7 @@ bash build.sh
 
 - [x] Phase 1: Build pipeline (clone → patch → compile → binary)
 - [x] Phase 2: Branding + minimalist UI defaults
-- [x] Phase 3: Patchbay client extension (offline + connected + AgentRunner)
+- [x] Phase 3: Patchbay client extension (offline + connected + PatchbayRunner)
 - [x] Phase 4: Source-level polish (custom theme, compact chrome, font defaults)
 
 ## Companion: Patchbay
