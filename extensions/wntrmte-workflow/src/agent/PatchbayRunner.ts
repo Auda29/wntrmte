@@ -17,7 +17,6 @@ export class PatchbayRunner {
 
             const proc = spawn('patchbay', ['run', taskId, runnerId], {
                 cwd: workspaceRoot,
-                shell: true,
                 stdio: ['ignore', 'pipe', 'pipe'],
             });
 

@@ -112,7 +112,7 @@ async function bootstrapAsync(
 
       // Pick a task
       const tasks = await store.getTasks();
-      const actionable = tasks.filter(t => t.status === 'open' || t.status === 'in_progress');
+      const actionable = tasks.filter(t => t.status === 'open' || t.status === 'blocked');
       if (actionable.length === 0) {
         void vscode.window.showInformationMessage('No open tasks to dispatch.');
         return;
