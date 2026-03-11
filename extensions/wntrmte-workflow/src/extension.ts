@@ -176,9 +176,38 @@ function getDashboardStartPlan(
 }
 
 function startBackgroundProcess(plan: TerminalPlan): void {
+  const env = Object.fromEntries(
+    Object.entries({ ...process.env, ...plan.env })
+      .filter(([, value]) => value !== undefined)
+      .map(([key, value]) => [key, String(value)])
+  );
+
+  if (process.platform === 'win32') {
+    const comspec = env.ComSpec || 'C:\\Windows\\System32\\cmd.exe';
+    const startArgs = [
+      '/d',
+      '/c',
+      'start',
+      '""',
+      '/b',
+      plan.command,
+      ...plan.args,
+    ];
+
+    const child = spawn(comspec, startArgs, {
+      cwd: plan.cwd,
+      env,
+      detached: true,
+      stdio: 'ignore',
+      windowsHide: true,
+    });
+    child.unref();
+    return;
+  }
+
   const child = spawn(plan.command, plan.args, {
     cwd: plan.cwd,
-    env: { ...process.env, ...plan.env },
+    env,
     detached: true,
     stdio: 'ignore',
     shell: false,
